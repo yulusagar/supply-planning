@@ -304,6 +304,9 @@ const App = {
     reduceOpen: false, reduceKey: null, reduceFrom: null, reduceTo: null,
     reduceChoice: null, reduceText: '',
     reduceReasons: {},   // key -> { from, to, reason }
+    // header filter row
+    filtersOpen: false, filterOpenId: null,
+    filters: null, draftFilters: null,   // applied vs. in-progress; seeded on first build
     edits: {},
     cityOpen: false,
     published: false,
@@ -818,6 +821,7 @@ const App = {
   },
 
   buildPlanner(P){
+    this.ensureFilters();
     const HW = this.HOUR_W, st = this.state, rel = st[P.dateRel];
     const now = this.nowHour(); this._now = now;
     const muted = 'color-mix(in srgb, var(--color-text) 55%, transparent)';
@@ -932,12 +936,21 @@ const App = {
       whiteSpace:'nowrap', fontSize:'12px', color:accent, transition:'opacity .2s',
       pointerEvents:'none', opacity: statusLabel?'1':'0' } }, statusLabel || 'Published ✓');
 
+    // Viewing options now uses the segmented treatment the People/Business tabs
+    // had, and sits in their old slot. Fleet (in the filter row) took over the
+    // People/Business switch.
+    const pivotSeg = isBiz ? null : this.segmented([
+      { label:'Yulu centers', active: pivot==='yc',      onClick: ()=> this.setState({[P.pivot]:'yc'}) },
+      { label:'Weekday',      active: pivot==='weekday', onClick: ()=> this.setState({[P.pivot]:'weekday'}) },
+    ]);
+
     const topRow = h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', padding:'12px 20px',
       background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
       this.makeMenuBtn(),
-      tabs, headCenter,
+      this.filtersButton(),
+      pivotSeg, headCenter,
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', marginLeft:'auto' } },
-        this.labeledCtl(isBiz?'Select centre':'Viewing options', headDropdown),
+        isBiz ? this.labeledCtl('Select centre', headDropdown) : null,
         schedChip ? h('div',{ style:{ display:'flex', alignItems:'center', height:'38px' } }, schedChip) : null,
         saveBtn,
         h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, publishBtn, publishedLabel)
@@ -978,7 +991,7 @@ const App = {
     );
 
     const topBar = h('div',{ style:{ position:'sticky', top:'0', zIndex:'30', background:'var(--color-bg)' } },
-      topRow, rulerRow);
+      topRow, st.filtersOpen ? this.buildFilterRow() : null, rulerRow);
 
     // ---- rows: YCs at one date (yc pivot) OR dates for one YC (weekday pivot) ----
     const statusFill = { past:'var(--color-accent-800)', live:'var(--color-accent)', future:'var(--color-accent-700)' };
@@ -1350,6 +1363,86 @@ const App = {
   // last committed value (published if there is one, otherwise saved); a first
   // entry has nothing to reduce from, so it passes straight through.
   // ======================================================================
+  // Filter row, mirroring the Rental Capacity Plan screen. Fleet doubles as the
+  // People/Business switch now that the tab pair is gone — see FLEET_VIEW below.
+  FILTERS: [
+    { id:'fleet',   label:'Fleet',              opts:['Yulu Corporate','Yulu Business'] },
+    { id:'city',    label:'City',               opts:['Bangalore','Delhi NCR','Mumbai','Pune'] },
+    { id:'cluster', label:'Cluster',            opts:['ALL','Cluster 1','Cluster 2','Cluster 3'] },
+    { id:'cat',     label:'Bike Category',      opts:['ALL','DEX GR/NV','Miracle'] },
+    { id:'billing', label:'Bike Billing Group', opts:['ALL'] },
+  ],
+  FLEET_VIEW: { 'Yulu Corporate':'people', 'Yulu Business':'business' },
+  defaultFilters(){
+    const o = {}; this.FILTERS.forEach(f=> o[f.id] = f.opts[0]); return o;
+  },
+  ensureFilters(){
+    if(!this.state.filters) this.state.filters = this.defaultFilters();
+    if(!this.state.draftFilters) this.state.draftFilters = Object.assign({}, this.state.filters);
+  },
+  applyFilters(){
+    const d = Object.assign({}, this.state.draftFilters);
+    // Fleet is the only filter wired to real behaviour; the rest are presentational
+    this.setState({ filters:d, filterOpenId:null, view: this.FLEET_VIEW[d.fleet] || 'people' });
+  },
+  resetFilters(){
+    const d = this.defaultFilters();
+    this.setState({ filters:d, draftFilters:Object.assign({},d), filterOpenId:null,
+      view: this.FLEET_VIEW[d.fleet] || 'people' });
+  },
+  // a segmented pill pair, the treatment the People/Business tabs used
+  segmented(items){
+    const accent = 'var(--color-accent)';
+    return h('div',{ style:{ display:'inline-flex', border:'1px solid var(--color-divider)',
+      borderRadius:'8px', overflow:'hidden' } },
+      items.map((it,i)=> h('div',{ onClick: it.onClick,
+        hover:{ background:'color-mix(in srgb, var(--color-text) 7%, transparent)' },
+        style:{ display:'flex', alignItems:'center', height:'38px', padding:'0 18px', fontSize:'14px',
+          cursor:'pointer', userSelect:'none', fontWeight:'500', whiteSpace:'nowrap',
+          background: it.active ? 'color-mix(in srgb, var(--color-accent) 16%, transparent)':'transparent',
+          color: it.active ? accent : 'var(--color-text)',
+          borderRight: i<items.length-1 ? '1px solid var(--color-divider)' : 'none' } }, it.label)));
+  },
+  buildFilterRow(){
+    const st = this.state;
+    const cell = (f)=> h('div',{ style:{ display:'flex', flexDirection:'column', gap:'5px', minWidth:'0' } },
+      h('span',{ style:{ fontSize:'11px', fontWeight:'500', color:'var(--color-text-2)' } }, f.label),
+      this.scDropdown({ label: st.draftFilters[f.id], open: st.filterOpenId===f.id, minWidth:150,
+        toggle: ()=> this.setState({ filterOpenId: st.filterOpenId===f.id ? null : f.id }),
+        items: f.opts.map(o=>({ label:o, active: st.draftFilters[f.id]===o,
+          onClick: ()=>{ this.state.draftFilters = Object.assign({}, this.state.draftFilters, {[f.id]:o});
+            this.setState({ filterOpenId:null }); } })) }));
+    const dirty = this.FILTERS.some(f=> st.draftFilters[f.id] !== st.filters[f.id]);
+    return h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', flexWrap:'wrap',
+      padding:'14px 20px', background:'var(--color-neutral-100)',
+      borderBottom:'1px solid var(--color-divider)' } },
+      this.FILTERS.map(cell),
+      h('div',{ style:{ display:'flex', alignItems:'center', gap:'10px', marginLeft:'auto' } },
+        h('button',{ class:'btn btn-primary', onClick: ()=> this.resetFilters(),
+          style:{ height:'38px' } }, 'Reset'),
+        h('button',{ class:'btn btn-primary'+(dirty?' btn-solid':''), disabled: !dirty,
+          onClick: ()=> this.applyFilters(), style:{ height:'38px' } }, 'Apply')));
+  },
+  activeFilterCount(){
+    const st = this.state, def = this.defaultFilters();
+    return this.FILTERS.filter(f=> st.filters[f.id] !== def[f.id]).length;
+  },
+  filtersButton(){
+    const on = this.state.filtersOpen, n = this.activeFilterCount();
+    return h('button',{ onClick: ()=> this.setState({ filtersOpen: !on, filterOpenId:null }),
+      title:'Filters', hover: on?null:{ borderColor:'var(--color-neutral-600)' },
+      style:{ display:'flex', alignItems:'center', gap:'6px', height:'38px', padding:'0 14px',
+        borderRadius:'8px', border:'1px solid '+(on?'var(--color-accent)':'var(--color-divider)'),
+        background: on?'color-mix(in srgb, var(--color-accent) 12%, transparent)':'var(--color-surface)',
+        color: on?'var(--color-accent)':'var(--color-text)', cursor:'pointer', fontSize:'14px',
+        fontFamily:'var(--font-heading)', fontWeight:'500' } },
+      h('span',{ html:'<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h13M4.5 9h9M7 13.5h4"/></svg>' }),
+      'Filters',
+      n ? h('span',{ style:{ minWidth:'18px', height:'18px', padding:'0 5px', borderRadius:'999px',
+        background:'var(--color-accent)', color:'var(--color-accent-100)', fontSize:'11px', fontWeight:'700',
+        display:'inline-flex', alignItems:'center', justifyContent:'center' } }, String(n)) : null);
+  },
+
   REDUCE_REASONS: [
     { id:'swap',   label:'Excessive swap orders' },
     { id:'spare',  label:'Spare part storage' },
