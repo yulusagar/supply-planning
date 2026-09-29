@@ -300,6 +300,10 @@ const App = {
     // `schedule` is the single pending queue — one date/time, many additions.
     pubOpen: false, pubChoice: 'now', pubDate: '', pubTime: '',
     schedule: null,
+    // reducing an already-committed number has to be justified
+    reduceOpen: false, reduceKey: null, reduceFrom: null, reduceTo: null,
+    reduceChoice: null, reduceText: '',
+    reduceReasons: {},   // key -> { from, to, reason }
     edits: {},
     cityOpen: false,
     published: false,
@@ -1166,6 +1170,8 @@ const App = {
                 restyle(val);
                 this._refreshPublish();
               });
+              // leaving the field with a number below the last committed one asks why
+              if(twoStage) inp.addEventListener('blur', ()=> this.checkReduction(key, inp.value));
               plannedNode = dot
                 ? h('div',{ class:'plan-cell' }, dot, inp)
                 : h('div',{ class:'plan-cell' }, inp);
@@ -1229,7 +1235,7 @@ const App = {
       ref:(el)=>{ this._rootEl = el; },
       style:{ minHeight:'100vh', background:'var(--color-bg)', color:'var(--color-text)', fontSize:'14px' } },
       this.buildNav(), topBar, main, twoStage ? this.buildPlanLegend() : null,
-      st.pubOpen ? this.buildPublishDialog(P) : null);
+      st.reduceOpen ? this.buildReduceDialog() : (st.pubOpen ? this.buildPublishDialog(P) : null));
   },
 
   // Day-to-day only: what the status dot in each planned cell means.
@@ -1339,6 +1345,88 @@ const App = {
     clearTimeout(this._st2);
     this._st2 = setTimeout(()=> this.setState({ dailySaved:false }), 1800);
   },
+  // ======================================================================
+  // Reducing a committed number — the planner has to say why. Baseline is the
+  // last committed value (published if there is one, otherwise saved); a first
+  // entry has nothing to reduce from, so it passes straight through.
+  // ======================================================================
+  REDUCE_REASONS: [
+    { id:'swap',   label:'Excessive swap orders' },
+    { id:'spare',  label:'Spare part storage' },
+    { id:'other',  label:'Other' },
+  ],
+  planBaseline(key){
+    const st = this.state;
+    const b = st.pubVals[key] !== undefined ? st.pubVals[key] : st.savedVals[key];
+    return (b === undefined || b === '') ? null : Number(b);
+  },
+  checkReduction(key, raw){
+    if(this.state.reduceOpen) return;                 // already asking
+    const base = this.planBaseline(key);
+    if(base === null || raw === '' || raw == null) return;
+    const val = Number(raw);
+    if(!(val < base)) return;
+    const had = this.state.reduceReasons[key];        // don't re-ask for the same change
+    if(had && had.from === base && had.to === val) return;
+    this.setState({ reduceOpen:true, reduceKey:key, reduceFrom:base, reduceTo:val,
+      reduceChoice:null, reduceText:'' });
+  },
+  closeReduce(){ this.setState({ reduceOpen:false }); },
+  // no reason given, so the reduction does not stand
+  revertReduction(){
+    const st = this.state, key = st.reduceKey;
+    if(key){
+      const base = this.planBaseline(key);
+      st[this.DAILY_P.edits] = Object.assign({}, st[this.DAILY_P.edits], {[key]: String(base)});
+    }
+    this.setState({ reduceOpen:false });
+    this._refreshPublish();
+  },
+  saveReduction(){
+    const st = this.state;
+    const pick = st.reduceChoice;
+    if(!pick) return;
+    const def = this.REDUCE_REASONS.find(r=> r.id===pick);
+    const reason = pick==='other' ? st.reduceText.trim() : def.label;
+    if(!reason) return;
+    st.reduceReasons = Object.assign({}, st.reduceReasons,
+      {[st.reduceKey]: { from: st.reduceFrom, to: st.reduceTo, reason }});
+    this.persistNow();
+    this.setState({ reduceOpen:false });
+  },
+  buildReduceDialog(){
+    const st = this.state, other = st.reduceChoice === 'other';
+    const canSave = !!st.reduceChoice && (!other || st.reduceText.trim() !== '');
+    return h('div',{ class:'modal-scrim',
+      onClick:(e)=>{ if(e.target.classList.contains('modal-scrim')) this.revertReduction(); } },
+      h('div',{ class:'modal', role:'dialog' },
+        h('div',{ class:'modal-head' },
+          h('div',{ style:{ fontFamily:'var(--font-heading)', fontWeight:'700', fontSize:'18px' } }, 'Why the lower number?'),
+          h('div',{ style:{ fontSize:'13px', color:'var(--color-text-2)', marginTop:'4px' } },
+            'Planned down from ' + st.reduceFrom + ' to ' + st.reduceTo + '.')),
+        h('div',{ class:'modal-body' },
+          this.REDUCE_REASONS.map(r=> h('button',{ class:'opt'+(st.reduceChoice===r.id?' on':''),
+            onClick: ()=> this.setState({ reduceChoice:r.id }) },
+            h('span',{ class:'radio' }),
+            h('span',{ class:'ttl', style:{ flex:'1', minWidth:'0' } }, r.label))),
+          other ? h('input',{ class:'fld', type:'text', value: st.reduceText,
+            placeholder:'Type the reason', style:{ width:'100%', marginTop:'2px' },
+            ref:(el)=>{ setTimeout(()=>{ try{ el.focus(); }catch(e){} }, 0); },
+            onInput:(e)=>{ this.state.reduceText = e.target.value; this._syncReduceSave(); } }) : null),
+        h('div',{ class:'modal-foot' },
+          h('button',{ class:'btn btn-primary', onClick: ()=> this.revertReduction() }, 'Cancel'),
+          h('button',{ class:'btn btn-primary'+(canSave?' btn-solid':''), disabled: !canSave,
+            ref:(el)=>{ this._reduceSave = el; },
+            onClick: ()=> this.saveReduction() }, 'Save reason'))));
+  },
+  _syncReduceSave(){
+    if(!this._reduceSave || !this._reduceSave.isConnected) return;
+    const st = this.state, other = st.reduceChoice === 'other';
+    const ok = !!st.reduceChoice && (!other || st.reduceText.trim() !== '');
+    this._reduceSave.toggleAttribute('disabled', !ok);
+    this._reduceSave.classList.toggle('btn-solid', ok);
+  },
+
   // ======================================================================
   // Publish dialogue — publish now, or queue the pending numbers into a single
   // scheduled batch. There is only ever ONE schedule: later submissions add to
@@ -1547,6 +1635,7 @@ const App = {
     return { v:2, savedAt: Date.now(),
       slotEdits: st.slotEdits, edits: st.edits, tEdits: st.tEdits,
       savedVals: st.savedVals, pubVals: st.pubVals, schedule: st.schedule,
+      reduceReasons: st.reduceReasons,
       dailyUnpublished: !!st.dailyUnpublished };
   },
   // debounced so typing in a field doesn't write on every keystroke
@@ -1580,6 +1669,7 @@ const App = {
     if(obj.savedVals&& typeof obj.savedVals==='object') this.state.savedVals= obj.savedVals;
     if(obj.pubVals  && typeof obj.pubVals==='object')   this.state.pubVals  = obj.pubVals;
     if(obj.schedule && typeof obj.schedule==='object')  this.state.schedule = obj.schedule;
+    if(obj.reduceReasons && typeof obj.reduceReasons==='object') this.state.reduceReasons = obj.reduceReasons;
     this.state.dailyUnpublished = !!obj.dailyUnpublished;
     this._restoredAt = obj.savedAt || null;
   },
@@ -1588,6 +1678,7 @@ const App = {
     try{ window.name = ''; }catch(e){}
     this.state.slotEdits = {}; this.state.edits = {}; this.state.tEdits = {};
     this.state.savedVals = {}; this.state.pubVals = {}; this.state.schedule = null;
+    this.state.reduceReasons = {};
     this.state.slotDirty = false; this.state.dirty = false; this.state.tDirty = false;
     this.render();
   },
