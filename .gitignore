@@ -1,0 +1,8 @@
+# Stale divergent copy of the prototype — index.html is canonical
+Supply-planning-prototype.html
+
+# Operational data — not part of the prototype, and not for a public repo
+*.csv
+
+# Local tooling
+.claude/
