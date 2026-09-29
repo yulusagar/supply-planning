@@ -135,6 +135,13 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
   background:color-mix(in srgb,var(--color-caution) 12%,transparent);color:var(--color-text);
   font-size:12px;font-weight:500;white-space:nowrap}
 .sched-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--color-caution);flex:none}
+/* filter row expand / collapse */
+.filter-wrap{display:grid;grid-template-rows:0fr;
+  transition:grid-template-rows .26s cubic-bezier(.4,0,.2,1)}
+.filter-wrap>.filter-inner{overflow:hidden;min-height:0}
+.filter-wrap.open{grid-template-rows:1fr}
+.filter-wrap:not(.open){pointer-events:none}
+@media (prefers-reduced-motion:reduce){.filter-wrap{transition:none}}
 .nav-backdrop{display:none}
 .nav-drawer{position:fixed;top:0;left:0;bottom:0;z-index:60;width:270px;display:flex;flex-direction:column;
   background:var(--color-surface);border-right:1px solid var(--color-divider);box-shadow:var(--shadow-md);
@@ -991,7 +998,7 @@ const App = {
     );
 
     const topBar = h('div',{ style:{ position:'sticky', top:'0', zIndex:'30', background:'var(--color-bg)' } },
-      topRow, st.filtersOpen ? this.buildFilterRow() : null, rulerRow);
+      topRow, this.buildFilterWrap(), rulerRow);
 
     // ---- rows: YCs at one date (yc pivot) OR dates for one YC (weekday pivot) ----
     const statusFill = { past:'var(--color-accent-800)', live:'var(--color-accent)', future:'var(--color-accent-700)' };
@@ -1402,6 +1409,25 @@ const App = {
           background: it.active ? 'color-mix(in srgb, var(--color-accent) 16%, transparent)':'transparent',
           color: it.active ? accent : 'var(--color-text)',
           borderRight: i<items.length-1 ? '1px solid var(--color-divider)' : 'none' } }, it.label)));
+  },
+  // The whole tree is rebuilt on every render, so a new node created already in
+  // its final state has nothing to animate from. Mount it in the PREVIOUS state,
+  // then flip the class a frame later so the transition actually runs.
+  buildFilterWrap(){
+    return h('div',{ class:'filter-wrap', ref:(el)=>{
+        const open = this.state.filtersOpen;
+        const was = (this._filtersWasOpen === undefined) ? open : this._filtersWasOpen;
+        el.classList.toggle('open', was);
+        if(was !== open){
+          requestAnimationFrame(()=> requestAnimationFrame(()=>{
+            if(el.isConnected) el.classList.toggle('open', open);
+          }));
+        }
+        // record on EVERY render, or the first one leaves it undefined and the
+        // next toggle mounts already-open with nothing to animate from
+        this._filtersWasOpen = open;
+      } },
+      h('div',{ class:'filter-inner' }, this.buildFilterRow()));
   },
   buildFilterRow(){
     const st = this.state;
