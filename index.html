@@ -43,8 +43,8 @@
   --radius-sm:6px; --radius-md:10px; --radius-lg:14px; --radius-pill:999px;
   --shadow-md:0 2px 10px rgba(34,34,34,0.10), 0 0 0 1px #e8e8e8;
 
-  --left-w:196px;   /* left rail width  */
-  --panel-w:172px;  /* side-panel width */
+  --left-w:250px;   /* left rail: model label + Cap. avail. (58) + Attac./tot (62) */
+  --panel-w:100px;  /* side-panel: the D-1|D-2|D-3 split column only */
 }
 
 .app-root{
@@ -611,7 +611,7 @@ const App = {
     const dash = { color:'color-mix(in srgb, var(--color-text) 32%, transparent)' };
     const cardStyle = { marginBottom:'24px', border:'1px solid var(--color-divider)', borderRadius:'8px',
       overflow:'hidden', background:'var(--color-surface)', boxShadow:'0 1px 2px rgba(0,0,0,.05)' };
-    const col2 = '72px', col3 = '86px';
+    const col3 = '86px';   // attached/total moved to the left rail
 
     if(!expanded){
       // one aggregated row, aligned to the 56px collapsed header
@@ -619,9 +619,7 @@ const App = {
       return h('div',{ style: cardStyle },
         h('div',{ style:{ height:this.collapsedH+'px', display:'flex', alignItems:'center',
           fontSize:'13px', fontVariantNumeric:'tabular-nums' } },
-          h('div',{ style:{ width:col2, flex:'none', textAlign:'center' } },
-            showRoll ? (r.attac+' / '+r.total) : h('span',{style:dash},'—')),
-          h('div',{ style:{ width:col3, flex:'none', textAlign:'center', borderLeft:'1px solid var(--color-divider)' } },
+          h('div',{ style:{ width:col3, flex:'none', textAlign:'center' } },
             showRoll ? r.split.join(' | ') : h('span',{style:dash},'—'))
         )
       );
@@ -638,18 +636,14 @@ const App = {
       // sub-headers (28px) — aligns with the Planned/Booked/Attached row
       h('div',{ style:{ height:this.subH+'px', display:'flex', alignItems:'center',
         borderBottom:'1px solid var(--color-divider)' } },
-        h('div',{ style:{ width:col2, flex:'none', textAlign:'center', fontSize:'10px', color:muted } }, 'Attac. / tot'),
-        h('div',{ style:{ width:col3, flex:'none', textAlign:'center', fontSize:'10px', color:muted,
-          borderLeft:'1px solid var(--color-divider)' } }, 'D‑1 | D‑2 | D‑3')
+        h('div',{ style:{ width:col3, flex:'none', textAlign:'center', fontSize:'10px', color:muted } }, 'D‑1 | D‑2 | D‑3')
       ),
       // per-model rows (38px each)
       yc.models.map((mod,mi)=>
         h('div',{ style:{ height:this.modelH+'px', display:'flex', alignItems:'center', fontSize:'13px',
           fontVariantNumeric:'tabular-nums',
           borderBottom: mi<yc.models.length-1 ? '1px solid var(--color-divider)':'none' } },
-          h('div',{ style:{ width:col2, flex:'none', textAlign:'center' } },
-            showRoll ? (mod.roll.attac+' / '+mod.roll.total) : h('span',{style:dash},'—')),
-          h('div',{ style:{ width:col3, flex:'none', textAlign:'center', borderLeft:'1px solid var(--color-divider)' } },
+          h('div',{ style:{ width:col3, flex:'none', textAlign:'center' } },
             showRoll ? mod.roll.split.join(' | ') : h('span',{style:dash},'—'))
         )
       )
@@ -1044,8 +1038,12 @@ const App = {
       const onToggle = ()=> this.setState(ss=>({ [P.expanded]: Object.assign({}, ss[P.expanded], {[rowKey]: !ss[P.expanded][rowKey]}) }));
 
       // ===== LEFT rail card (name + model labels + available capacity) =====
-      const CAP_W = '58px';
+      const CAP_W = '58px', ATT_W = '62px';
       const capMuted = 'color-mix(in srgb, var(--color-text) 65%, transparent)';
+      // attached/total sits with capacity, where it can be read against it;
+      // the D-1|D-2|D-3 split stays in the Rollovers panel
+      const rollShow = rel <= 0;   // end-of-day actuals: today and past only
+      const attDash = h('span',{ style:{ color:'color-mix(in srgb, var(--color-text) 32%, transparent)' } }, '—');
       // column headers, revealed with the accordion, sitting on the band that
       // lines up with Planned/Booked/Attached on the right
       const subSpacer = expanded ? h('div',{ style:{ height:this.subH+'px', display:'flex', alignItems:'center',
@@ -1053,7 +1051,9 @@ const App = {
         fontSize:'10px', fontWeight:'500', letterSpacing:'.02em', color:capMuted } },
         h('div',{ style:{ flex:'1', minWidth:'0', paddingLeft:'16px' } }, 'Bike models'),
         h('div',{ style:{ width:CAP_W, flex:'none', textAlign:'center',
-          borderLeft:'1px solid var(--color-divider)' } }, 'Cap. avail.')
+          borderLeft:'1px solid var(--color-divider)' } }, 'Cap. avail.'),
+        h('div',{ style:{ width:ATT_W, flex:'none', textAlign:'center',
+          borderLeft:'1px solid var(--color-divider)' } }, 'Attac. / tot')
       ) : null;
       const modelLabelRows = expanded ? yc.models.map((mod)=>
         h('div',{ hover:{ background:'color-mix(in srgb, var(--color-text) 4%, transparent)' },
@@ -1063,7 +1063,11 @@ const App = {
             overflow:'hidden', textOverflow:'ellipsis' } }, mod.label),
           h('span',{ style:{ width:CAP_W, flex:'none', textAlign:'center', fontSize:'13px',
             fontVariantNumeric:'tabular-nums', borderLeft:'1px solid var(--color-divider)',
-            alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } }, String(mod.cap))
+            alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } }, String(mod.cap)),
+          h('span',{ style:{ width:ATT_W, flex:'none', textAlign:'center', fontSize:'13px',
+            fontVariantNumeric:'tabular-nums', borderLeft:'1px solid var(--color-divider)',
+            alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } },
+            (rollShow && mod.roll) ? (mod.roll.attac+' / '+mod.roll.total) : attDash.cloneNode(true))
         )
       ) : null;
 
