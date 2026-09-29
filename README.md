@@ -3,7 +3,7 @@
 Interactive prototype for Yulu supply planning. Single self-contained HTML file;
 no build step and no dependencies.
 
-**Live:** https://SAGAR-GH-USER.github.io/supply-planning/
+**Live:** https://yulusagar.github.io/supply-planning/
 
 ## Sections
 

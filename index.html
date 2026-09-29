@@ -67,11 +67,14 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 .btn-primary{background:var(--color-neutral-100);color:var(--color-text);border-color:transparent}
 .btn-primary:not(:disabled):hover{background:var(--color-neutral-200)}
 .btn-primary:disabled{background:var(--color-neutral-300);color:var(--color-neutral-400)}
-/* solid emphasis = Yulu Primary (dark #222 / white) — Publish when there are unsaved changes */
-.btn-primary.btn-solid{background:var(--color-accent);color:#fff;border-color:var(--color-accent)}
-.btn-primary.btn-solid:disabled{background:var(--color-neutral-300);color:var(--color-neutral-400)}
-.btn-primary.btn-solid:not(:disabled):hover{background:var(--color-accent-800)}
-.btn-primary.btn-solid:not(:disabled):active{background:var(--color-accent-700)}
+/* emphasis = outline pill: solid #222 stroke on surface, #222 label.
+   Used by Publish / Update when there are changes to apply. */
+.btn-primary.btn-solid{background:var(--color-surface);color:var(--color-accent);
+  border-color:var(--color-accent)}
+.btn-primary.btn-solid:disabled{background:var(--color-neutral-300);color:var(--color-neutral-400);
+  border-color:transparent}
+.btn-primary.btn-solid:not(:disabled):hover{background:color-mix(in srgb,var(--color-accent) 8%,var(--color-surface))}
+.btn-primary.btn-solid:not(:disabled):active{background:color-mix(in srgb,var(--color-accent) 14%,var(--color-surface))}
 
 /* side-panel toggle */
 .panel-toggle{position:absolute;top:12px;right:20px;z-index:20;width:34px;height:34px;display:flex;
@@ -101,6 +104,36 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 /* hamburger lives in the header when collapsed, inside the drawer when open */
 .app-root.nav-open .menu-btn-header{display:none}
 .app-root:not(.nav-open) .menu-btn-drawer{display:none}
+/* modal — scrim + centred surface card, same tokens as the rest of the app */
+.modal-scrim{position:fixed;inset:0;z-index:80;background:color-mix(in srgb,var(--color-text) 38%,transparent);
+  display:flex;align-items:center;justify-content:center;padding:24px}
+.modal{width:100%;max-width:460px;background:var(--color-surface);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-md);overflow:hidden}
+.modal-head{padding:20px 24px 0}
+.modal-body{padding:16px 24px 0;display:flex;flex-direction:column;gap:10px}
+.modal-foot{padding:20px 24px;display:flex;align-items:center;justify-content:flex-end;gap:10px}
+/* selectable option row — radio mark + label + description */
+.opt{display:flex;gap:12px;padding:14px;border:1px solid var(--color-divider);border-radius:var(--radius-md);
+  cursor:pointer;background:var(--color-surface);text-align:left;width:100%;font-family:var(--font-body)}
+.opt:hover{border-color:var(--color-neutral-400)}
+.opt.on{border-color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 5%,transparent)}
+.opt .radio{flex:none;width:18px;height:18px;margin-top:1px;border-radius:50%;
+  border:1.5px solid var(--color-neutral-400);display:flex;align-items:center;justify-content:center}
+.opt.on .radio{border-color:var(--color-accent)}
+.opt.on .radio::after{content:"";width:9px;height:9px;border-radius:50%;background:var(--color-accent)}
+.opt .ttl{font-weight:700;font-size:14px;color:var(--color-text)}
+.opt .sub{font-size:12px;color:var(--color-text-2);margin-top:3px;line-height:1.35}
+/* date / time fields */
+.fld{height:38px;padding:0 10px;font-family:var(--font-body);font-size:14px;font-weight:500;
+  color:var(--color-text);background:var(--color-neutral-100);border:1px solid transparent;
+  border-radius:8px;caret-color:var(--color-accent)}
+.fld:focus-visible{outline:2px solid var(--color-accent);outline-offset:1px}
+.fld-lbl{font-size:11px;font-weight:500;color:var(--color-text-2);margin-bottom:5px;display:block}
+/* standing note that a schedule is queued */
+.sched-chip{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 10px;border-radius:var(--radius-pill);
+  background:color-mix(in srgb,var(--color-caution) 12%,transparent);color:var(--color-text);
+  font-size:12px;font-weight:500;white-space:nowrap}
+.sched-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--color-caution);flex:none}
 .nav-backdrop{display:none}
 .nav-drawer{position:fixed;top:0;left:0;bottom:0;z-index:60;width:270px;display:flex;flex-direction:column;
   background:var(--color-surface);border-right:1px solid var(--color-divider);box-shadow:var(--shadow-md);
@@ -262,6 +295,10 @@ const App = {
     // per-cell snapshots for day-to-day: what Save committed, what Publish made
     // live. The live value in a field is edits[key]; these two say how it differs.
     savedVals: {}, pubVals: {},
+    // publish dialogue: 'now' publishes immediately, 'schedule' queues a batch.
+    // `schedule` is the single pending queue — one date/time, many additions.
+    pubOpen: false, pubChoice: 'now', pubDate: '', pubTime: '',
+    schedule: null,
     edits: {},
     cityOpen: false,
     published: false,
@@ -869,9 +906,17 @@ const App = {
         : 'Save these numbers in the platform', style:{ fontSize:'14px' } }, 'Save') : null;
 
     const publishBtn = h('button',{ class:'btn btn-primary'+(canPublish?' btn-solid':''),
-      ref:(el)=>{ this._publishBtn = el; }, onClick: ()=> this.publishPlanner(P),
+      ref:(el)=>{ this._publishBtn = el; },
+      onClick: ()=> twoStage ? this.openPublishDialog() : this.publishPlanner(P),
       disabled: !canPublish, title:'Push the saved numbers upstream and open these slots to customers',
       style:{ fontSize:'14px' } }, 'Publish');
+
+    // a queued schedule stays visible without opening the dialogue
+    const schedChip = (twoStage && st.schedule) ? h('button',{ onClick: ()=> this.openPublishDialog(),
+      class:'sched-chip', title:'View or change the scheduled publish',
+      style:{ border:'none', cursor:'pointer' } },
+      h('span',{ class:'dot' }),
+      h('span',{}, 'Scheduled · '+this.schedLabel(st.schedule))) : null;
 
     const statusLabel = st[P.published] ? 'Published ✓' : (st.dailySaved ? 'Saved ✓'
       : (twoStage && tally.dirtyPublished
@@ -888,6 +933,7 @@ const App = {
       tabs, headCenter,
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', marginLeft:'auto' } },
         this.labeledCtl(isBiz?'Select centre':'Viewing options', headDropdown),
+        schedChip ? h('div',{ style:{ display:'flex', alignItems:'center', height:'38px' } }, schedChip) : null,
         saveBtn,
         h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, publishBtn, publishedLabel)
       )
@@ -1181,7 +1227,8 @@ const App = {
     return h('div',{ class:'app-root'+(st.panelOpen?' panel-open':'')+(st.navOpen?' nav-open':''),
       ref:(el)=>{ this._rootEl = el; },
       style:{ minHeight:'100vh', background:'var(--color-bg)', color:'var(--color-text)', fontSize:'14px' } },
-      this.buildNav(), topBar, main, twoStage ? this.buildPlanLegend() : null);
+      this.buildNav(), topBar, main, twoStage ? this.buildPlanLegend() : null,
+      st.pubOpen ? this.buildPublishDialog(P) : null);
   },
 
   // Day-to-day only: what the status dot in each planned cell means.
@@ -1291,6 +1338,130 @@ const App = {
     clearTimeout(this._st2);
     this._st2 = setTimeout(()=> this.setState({ dailySaved:false }), 1800);
   },
+  // ======================================================================
+  // Publish dialogue — publish now, or queue the pending numbers into a single
+  // scheduled batch. There is only ever ONE schedule: later submissions add to
+  // it (and may move its date/time), and publishing now always clears it.
+  // ======================================================================
+  pad2(n){ return (n<10?'0':'')+n; },
+  todayISO(){ const d=new Date(); return d.getFullYear()+'-'+this.pad2(d.getMonth()+1)+'-'+this.pad2(d.getDate()); },
+  // a sensible first suggestion: tomorrow at 06:00, before the day starts
+  defaultSchedule(){
+    const d = new Date(); d.setDate(d.getDate()+1);
+    return { date: d.getFullYear()+'-'+this.pad2(d.getMonth()+1)+'-'+this.pad2(d.getDate()), time: '06:00' };
+  },
+  schedLabel(sc){
+    if(!sc) return '';
+    const [y,m,dd] = sc.date.split('-').map(Number);
+    const dt = new Date(y, m-1, dd);
+    const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return DOW[dt.getDay()]+' '+dd+' '+MON[m-1]+', '+sc.time;
+  },
+  // everything committed but not yet live IS the queue — counting it directly
+  // means a second addition can never double-count the first one's values
+  schedCount(){ return this.planTally().savedUnpublished; },
+
+  openPublishDialog(){
+    const sc = this.state.schedule;
+    const def = sc ? { date: sc.date, time: sc.time } : this.defaultSchedule();
+    this.setState({ pubOpen:true,
+      // Publish now is the default — except when a schedule is already queued,
+      // where defaulting to a destructive action would be a trap
+      pubChoice: sc ? 'schedule' : 'now',
+      pubDate: def.date, pubTime: def.time });
+  },
+  closePublishDialog(){ this.setState({ pubOpen:false }); },
+
+  // how many pending values this submission covers
+  pendingCount(){ const t = this.planTally(); return t.dirty + t.savedUnpublished; },
+
+  confirmPublishNow(P){
+    // publishing now supersedes anything queued
+    this.state.schedule = null;
+    this.setState({ pubOpen:false });
+    this.publishPlanner(P);
+  },
+  confirmSchedule(){
+    const st = this.state, n = this.pendingCount();
+    if(!st.pubDate || !st.pubTime) return;
+    // pending numbers are committed like a Save — they are not live yet
+    Object.keys(st.edits).forEach(k=>{ if(st.pubVals[k] === undefined) st.savedVals[k] = st.edits[k]; });
+    const prev = st.schedule;
+    st.schedule = {
+      date: st.pubDate, time: st.pubTime,
+      // timestamps only — the queued total is derived, never accumulated
+      adds: (prev ? prev.adds : []).concat(n>0 ? [Date.now()] : [])
+    };
+    this.persistNow();
+    this.setState({ pubOpen:false, dailyUnsaved:false, dailySaved:false });
+  },
+  cancelSchedule(){
+    this.state.schedule = null;
+    this.persistNow();
+    this.setState({ pubOpen:false });
+  },
+
+  buildPublishDialog(P){
+    const st = this.state, sc = st.schedule, n = this.pendingCount();
+    const scheduling = st.pubChoice === 'schedule';
+
+    const opt = (id, title, sub)=> h('button',{ class:'opt'+(st.pubChoice===id?' on':''),
+      onClick: ()=> this.setState({ pubChoice:id }) },
+      h('span',{ class:'radio' }),
+      h('span',{ style:{ flex:'1', minWidth:'0' } },
+        h('div',{ class:'ttl' }, title),
+        h('div',{ class:'sub' }, sub)));
+
+    const field = (label, type, val, key)=> h('label',{ style:{ flex:'1', minWidth:'0' } },
+      h('span',{ class:'fld-lbl' }, label),
+      h('input',{ class:'fld', type, value: val, min: type==='date' ? this.todayISO() : null,
+        style:{ width:'100%' },
+        onInput:(e)=>{ this.state[key] = e.target.value; this._syncPubSubmit(); } }));
+
+    // what this submission will do, in one line
+    const canSubmit = scheduling ? (!!st.pubDate && !!st.pubTime && (n>0 || !!sc)) : n>0;
+
+    return h('div',{ class:'modal-scrim',
+      onClick:(e)=>{ if(e.target.classList.contains('modal-scrim')) this.closePublishDialog(); } },
+      h('div',{ class:'modal', role:'dialog' },
+        h('div',{ class:'modal-head' },
+          h('div',{ style:{ fontFamily:'var(--font-heading)', fontWeight:'700', fontSize:'18px' } }, 'Publish options'),
+          sc ? h('div',{ style:{ marginTop:'12px' } },
+            h('span',{ class:'sched-chip' }, h('span',{ class:'dot' }),
+              h('span',{}, this.schedCount() + ' queued for ' + this.schedLabel(sc)))) : null),
+
+        h('div',{ class:'modal-body' },
+          opt('now', sc ? 'Publish everything now' : 'Publish now',
+            sc ? 'Sends the queued numbers and anything pending, and clears the schedule.'
+               : 'Numbers go live immediately and customers can book these slots.'),
+          opt('schedule', sc ? 'Add to the schedule' : 'Add a schedule',
+            sc ? 'Adds these numbers to the queued batch. Changing the time below moves the whole batch.'
+               : 'Choose when these numbers go live.'),
+          scheduling ? h('div',{ style:{ display:'flex', gap:'10px', padding:'2px 4px 0' } },
+            field('Date', 'date', st.pubDate, 'pubDate'),
+            field('Time', 'time', st.pubTime, 'pubTime')) : null),
+
+        h('div',{ class:'modal-foot' },
+          sc ? h('button',{ class:'btn', onClick: ()=> this.cancelSchedule(),
+            style:{ marginRight:'auto', color:'var(--color-negative)' } }, 'Cancel schedule') : null,
+          h('button',{ class:'btn btn-primary', onClick: ()=> this.closePublishDialog() }, 'Cancel'),
+          h('button',{ class:'btn btn-primary'+(canSubmit?' btn-solid':''), disabled: !canSubmit,
+            ref:(el)=>{ this._pubSubmit = el; },
+            onClick: ()=> scheduling ? this.confirmSchedule() : this.confirmPublishNow(P) },
+            scheduling ? (sc ? 'Update schedule' : 'Schedule publish') : 'Publish now'))));
+  },
+  // keep the submit button honest while the date/time fields are typed into
+  _syncPubSubmit(){
+    if(!this._pubSubmit || !this._pubSubmit.isConnected) return;
+    const st = this.state;
+    const ok = st.pubChoice !== 'schedule'
+      ? this.pendingCount() > 0
+      : (!!st.pubDate && !!st.pubTime && (this.pendingCount() > 0 || !!st.schedule));
+    this._pubSubmit.toggleAttribute('disabled', !ok);
+    this._pubSubmit.classList.toggle('btn-solid', ok);
+  },
+
   // Publish = push the saved numbers upstream, opening these slots to customers
   publishPlanner(P){
     if(P === this.DAILY_P){
@@ -1380,7 +1551,7 @@ const App = {
     const st = this.state;
     return { v:2, savedAt: Date.now(),
       slotEdits: st.slotEdits, edits: st.edits, tEdits: st.tEdits,
-      savedVals: st.savedVals, pubVals: st.pubVals,
+      savedVals: st.savedVals, pubVals: st.pubVals, schedule: st.schedule,
       dailyUnpublished: !!st.dailyUnpublished };
   },
   // debounced so typing in a field doesn't write on every keystroke
@@ -1413,6 +1584,7 @@ const App = {
     if(obj.tEdits   && typeof obj.tEdits==='object')    this.state.tEdits   = obj.tEdits;
     if(obj.savedVals&& typeof obj.savedVals==='object') this.state.savedVals= obj.savedVals;
     if(obj.pubVals  && typeof obj.pubVals==='object')   this.state.pubVals  = obj.pubVals;
+    if(obj.schedule && typeof obj.schedule==='object')  this.state.schedule = obj.schedule;
     this.state.dailyUnpublished = !!obj.dailyUnpublished;
     this._restoredAt = obj.savedAt || null;
   },
@@ -1420,7 +1592,7 @@ const App = {
     try{ localStorage.removeItem(this.STORE_KEY); }catch(e){}
     try{ window.name = ''; }catch(e){}
     this.state.slotEdits = {}; this.state.edits = {}; this.state.tEdits = {};
-    this.state.savedVals = {}; this.state.pubVals = {};
+    this.state.savedVals = {}; this.state.pubVals = {}; this.state.schedule = null;
     this.state.slotDirty = false; this.state.dirty = false; this.state.tDirty = false;
     this.render();
   },
