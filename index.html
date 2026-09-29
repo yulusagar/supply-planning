@@ -117,7 +117,8 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
   cursor:pointer;background:var(--color-surface);text-align:left;width:100%;font-family:var(--font-body)}
 .opt:hover{border-color:var(--color-neutral-400)}
 .opt.on{border-color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 5%,transparent)}
-.opt .radio{flex:none;width:18px;height:18px;margin-top:1px;border-radius:50%;
+.opt{align-items:center}
+.opt .radio{flex:none;width:18px;height:18px;border-radius:50%;
   border:1.5px solid var(--color-neutral-400);display:flex;align-items:center;justify-content:center}
 .opt.on .radio{border-color:var(--color-accent)}
 .opt.on .radio::after{content:"";width:9px;height:9px;border-radius:50%;background:var(--color-accent)}
@@ -1406,12 +1407,10 @@ const App = {
     const st = this.state, sc = st.schedule, n = this.pendingCount();
     const scheduling = st.pubChoice === 'schedule';
 
-    const opt = (id, title, sub)=> h('button',{ class:'opt'+(st.pubChoice===id?' on':''),
+    const opt = (id, title)=> h('button',{ class:'opt'+(st.pubChoice===id?' on':''),
       onClick: ()=> this.setState({ pubChoice:id }) },
       h('span',{ class:'radio' }),
-      h('span',{ style:{ flex:'1', minWidth:'0' } },
-        h('div',{ class:'ttl' }, title),
-        h('div',{ class:'sub' }, sub)));
+      h('span',{ class:'ttl', style:{ flex:'1', minWidth:'0' } }, title));
 
     const field = (label, type, val, key)=> h('label',{ style:{ flex:'1', minWidth:'0' } },
       h('span',{ class:'fld-lbl' }, label),
@@ -1432,12 +1431,8 @@ const App = {
               h('span',{}, this.schedCount() + ' queued for ' + this.schedLabel(sc)))) : null),
 
         h('div',{ class:'modal-body' },
-          opt('now', sc ? 'Publish everything now' : 'Publish now',
-            sc ? 'Sends the queued numbers and anything pending, and clears the schedule.'
-               : 'Numbers go live immediately and customers can book these slots.'),
-          opt('schedule', sc ? 'Add to the schedule' : 'Add a schedule',
-            sc ? 'Adds these numbers to the queued batch. Changing the time below moves the whole batch.'
-               : 'Choose when these numbers go live.'),
+          opt('now', sc ? 'Publish everything now' : 'Publish now'),
+          opt('schedule', sc ? 'Add to the schedule' : 'Add a schedule'),
           scheduling ? h('div',{ style:{ display:'flex', gap:'10px', padding:'2px 4px 0' } },
             field('Date', 'date', st.pubDate, 'pubDate'),
             field('Time', 'time', st.pubTime, 'pubTime')) : null),
