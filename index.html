@@ -149,6 +149,13 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
   background:color-mix(in srgb,var(--color-caution) 12%,transparent);color:var(--color-text);
   font-size:12px;font-weight:500;white-space:nowrap}
 .sched-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--color-caution);flex:none}
+/* bulk upload dropzone */
+.dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  padding:28px 20px;border:1.5px dashed var(--color-neutral-400);border-radius:var(--radius-md);
+  background:var(--color-neutral-100);text-align:center}
+.dropzone .dz-title{font-weight:700;font-size:14px;color:var(--color-text)}
+.dropzone .dz-sub{font-size:12px;color:var(--color-text-2)}
+
 /* filter row expand / collapse */
 .filter-wrap{display:grid;grid-template-rows:0fr;
   transition:grid-template-rows .26s cubic-bezier(.4,0,.2,1)}
@@ -328,6 +335,7 @@ const App = {
     // header filter row
     filtersOpen: false, filterOpenId: null,
     filters: null, draftFilters: null,   // applied vs. in-progress; seeded on first build
+    uploadOpen: false,   // Bulk upload dialogue — presentational for now
     edits: {},
     cityOpen: false,
     published: false,
@@ -1012,6 +1020,9 @@ const App = {
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', marginLeft:'auto' } },
         isBiz ? this.labeledCtl('Select centre', headDropdown) : null,
         schedChip ? h('div',{ style:{ display:'flex', alignItems:'center', height:'38px' } }, schedChip) : null,
+        twoStage ? h('button',{ class:'btn btn-primary', onClick: ()=> this.setState({ uploadOpen:true }),
+          title:'Upload planning numbers from a spreadsheet',
+          style:{ fontSize:'14px', whiteSpace:'nowrap' } }, 'Bulk Upload') : null,
         saveBtn,
         h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, publishBtn, publishedLabel)
       )
@@ -1317,7 +1328,9 @@ const App = {
       ref:(el)=>{ this._rootEl = el; },
       style:{ minHeight:'100vh', background:'var(--color-bg)', color:'var(--color-text)', fontSize:'14px' } },
       this.buildNav(), topBar, main, twoStage ? this.buildPlanLegend() : null,
-      st.reduceOpen ? this.buildReduceDialog() : (st.pubOpen ? this.buildPublishDialog(P) : null));
+      st.reduceOpen ? this.buildReduceDialog()
+        : (st.pubOpen ? this.buildPublishDialog(P)
+        : (st.uploadOpen ? this.buildUploadDialog() : null)));
   },
 
   // Day-to-day only: what the status dot in each planned cell means.
@@ -1606,6 +1619,37 @@ const App = {
     const ok = !!st.reduceChoice && (!other || st.reduceText.trim() !== '');
     this._reduceSave.toggleAttribute('disabled', !ok);
     this._reduceSave.classList.toggle('btn-solid', ok);
+  },
+
+  // Bulk upload — presentational only for now: it shows the flow and the file
+  // expectations, but nothing is parsed or applied.
+  buildUploadDialog(){
+    const row = (label)=> h('li',{ style:{ fontSize:'12px', color:'var(--color-text-2)',
+      marginBottom:'4px' } }, label);
+    return h('div',{ class:'modal-scrim',
+      onClick:(e)=>{ if(e.target.classList.contains('modal-scrim')) this.setState({uploadOpen:false}); } },
+      h('div',{ class:'modal', role:'dialog' },
+        h('div',{ class:'modal-head' },
+          h('div',{ style:{ fontFamily:'var(--font-heading)', fontWeight:'700', fontSize:'18px' } }, 'Bulk upload')),
+        h('div',{ class:'modal-body' },
+          h('div',{ class:'dropzone' },
+            h('span',{ style:{ color:'var(--color-text-2)' },
+              html:'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>' }),
+            h('div',{ class:'dz-title' }, 'Drag an Excel file here'),
+            h('div',{ class:'dz-sub' }, 'or click to browse — .xlsx or .csv, up to 5 MB')),
+          h('div',{ style:{ paddingTop:'4px' } },
+            h('div',{ style:{ fontSize:'12px', fontWeight:'700', marginBottom:'6px' } }, 'The sheet should contain'),
+            h('ul',{ style:{ margin:'0', paddingLeft:'18px' } },
+              row('Date, Yulu centre and slot'),
+              row('Bike model'),
+              row('Planned number'))),
+          h('div',{ style:{ fontSize:'12px', color:'var(--color-text-3)' } },
+            'Upload is not wired up yet — this is a preview of the flow.')),
+        h('div',{ class:'modal-foot' },
+          h('button',{ class:'btn', onClick: ()=> this.setState({uploadOpen:false}),
+            style:{ marginRight:'auto', fontSize:'13px', color:'var(--color-text-2)' } }, 'Download template'),
+          h('button',{ class:'btn btn-primary', onClick: ()=> this.setState({uploadOpen:false}) }, 'Cancel'),
+          h('button',{ class:'btn btn-primary', disabled:true }, 'Upload'))));
   },
 
   // ======================================================================
