@@ -43,7 +43,8 @@
   --radius-sm:6px; --radius-md:10px; --radius-lg:14px; --radius-pill:999px;
   --shadow-md:0 2px 10px rgba(34,34,34,0.10), 0 0 0 1px #e8e8e8;
 
-  --left-w:250px;   /* left rail: model label + Cap. avail. (58) + Attac./tot (62) */
+  --left-w:196px;   /* left rail: model label + Total capacity (74) */
+  --att-w:0px;      /* Attac./tot column — widens with the Rollovers panel */
   --panel-w:100px;  /* side-panel: the D-1|D-2|D-3 split column only */
 }
 
@@ -89,6 +90,16 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 /* the side rail: width animates; this is the ONLY thing that reflows the timeline */
 .aside-rail{flex:0 0 auto;width:0;overflow:hidden;transition:width .28s cubic-bezier(.4,0,.2,1)}
 .app-root.panel-open .aside-rail{width:var(--panel-w)}
+/* Rollovers is one toggle over two places: the Attac./tot column in the left
+   rail and the D-1|D-2|D-3 panel. The column animates to zero width rather than
+   unmounting, so the rail reflows in step with the panel instead of snapping. */
+.app-root.panel-open{--left-w:258px;--att-w:62px}
+.left-rail{transition:flex-basis .28s cubic-bezier(.4,0,.2,1),width .28s cubic-bezier(.4,0,.2,1)}
+.att-col{width:var(--att-w);flex:none;overflow:hidden;white-space:nowrap;text-align:center;
+  border-left:1px solid var(--color-divider);
+  transition:width .28s cubic-bezier(.4,0,.2,1),border-left-width .28s}
+.app-root:not(.panel-open) .att-col{border-left-width:0}
+@media (prefers-reduced-motion:reduce){.left-rail,.att-col,.aside-rail{transition:none}}
 
 /* section nav — menu button + left drawer with vertical tabs */
 .menu-btn{width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;
@@ -1062,7 +1073,7 @@ const App = {
       const onToggle = ()=> this.setState(ss=>({ [P.expanded]: Object.assign({}, ss[P.expanded], {[rowKey]: !ss[P.expanded][rowKey]}) }));
 
       // ===== LEFT rail card (name + model labels + available capacity) =====
-      const CAP_W = '74px', ATT_W = '62px';
+      const CAP_W = '74px';
       const capMuted = 'color-mix(in srgb, var(--color-text) 65%, transparent)';
       // attached/total sits with capacity, where it can be read against it;
       // the D-1|D-2|D-3 split stays in the Rollovers panel
@@ -1076,8 +1087,7 @@ const App = {
         h('div',{ style:{ flex:'1', minWidth:'0', paddingLeft:'16px' } }, 'Bike models'),
         h('div',{ style:{ width:CAP_W, flex:'none', textAlign:'center',
           borderLeft:'1px solid var(--color-divider)' } }, 'Total capacity'),
-        h('div',{ style:{ width:ATT_W, flex:'none', textAlign:'center',
-          borderLeft:'1px solid var(--color-divider)' } }, 'Attac. / tot')
+        h('div',{ class:'att-col' }, 'Attac. / tot')
       ) : null;
       const modelLabelRows = expanded ? yc.models.map((mod)=>
         h('div',{ hover:{ background:'color-mix(in srgb, var(--color-text) 4%, transparent)' },
@@ -1091,8 +1101,7 @@ const App = {
             fontVariantNumeric:'tabular-nums', borderLeft:'1px solid var(--color-divider)',
             alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } },
             String(this.totalCapacity(yc, mod, rel, slots, P))),
-          h('span',{ style:{ width:ATT_W, flex:'none', textAlign:'center', fontSize:'13px',
-            fontVariantNumeric:'tabular-nums', borderLeft:'1px solid var(--color-divider)',
+          h('span',{ class:'att-col', style:{ fontSize:'13px', fontVariantNumeric:'tabular-nums',
             alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } },
             (rollShow && mod.roll) ? (mod.roll.attac+' / '+mod.roll.total) : attDash.cloneNode(true))
         )
@@ -1258,7 +1267,7 @@ const App = {
 
     // ---- main columns ----
     this.noteMinSlot(_slotSpans);
-    const leftRail = h('div',{ style:{ flex:'0 0 var(--left-w)', width:'var(--left-w)' } },
+    const leftRail = h('div',{ class:'left-rail', style:{ flex:'0 0 var(--left-w)', width:'var(--left-w)' } },
       h('div',{ style:{ height:'16px' } }), leftCards);
 
     const middle = h('div',{ class:'tl-scroll', ref:(el)=>{this._scrollEl=el;},
