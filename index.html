@@ -574,6 +574,29 @@ const App = {
 
   // aggregate model rows for the collapsed-YC summary row
   aggCap(models){ return models.reduce((s,mo)=> s + mo.cap, 0); },
+  // Today's declared capacity — bookable positions offered across the day for
+  // one bike model. Published numbers only; Blocked slots contribute nothing;
+  // a day with nothing published is 0.
+  declaredCapacity(yc, mod, rel, slots, P){
+    let sum = 0;
+    (slots||[]).forEach(sl=>{
+      if(sl[3]) return;                     // Blocked slot: never planned
+      const key = this.state[P.view]+'|'+rel+'|'+yc.id+'|'+mod.key+'|'+sl[0];
+      const pub = this.state.pubVals[key];
+      if(pub !== undefined && pub !== ''){ sum += Number(pub) || 0; return; }
+      // seed figures stand in for plans already published on past/today/D+1
+      const v = mod.vals && mod.vals[sl[0]];
+      if(rel < 2 && v) sum += Number(v[0]) || 0;
+    });
+    return sum;
+  },
+  // Total capacity = declared + the rollover still owed. Rollover is an
+  // end-of-day actual, so it only exists for today and past; future days are
+  // declared-only rather than guessing a rollover that has not happened.
+  totalCapacity(yc, mod, rel, slots, P){
+    const roll = (rel <= 0 && mod.roll) ? mod.roll.total : 0;
+    return this.declaredCapacity(yc, mod, rel, slots, P) + roll;
+  },
   aggRoll(models){
     let attac=0,total=0,split=[0,0,0];
     models.forEach(mo=>{ attac+=mo.roll.attac; total+=mo.roll.total; mo.roll.split.forEach((x,i)=> split[i]+=x); });
@@ -1039,7 +1062,7 @@ const App = {
       const onToggle = ()=> this.setState(ss=>({ [P.expanded]: Object.assign({}, ss[P.expanded], {[rowKey]: !ss[P.expanded][rowKey]}) }));
 
       // ===== LEFT rail card (name + model labels + available capacity) =====
-      const CAP_W = '58px', ATT_W = '62px';
+      const CAP_W = '74px', ATT_W = '62px';
       const capMuted = 'color-mix(in srgb, var(--color-text) 65%, transparent)';
       // attached/total sits with capacity, where it can be read against it;
       // the D-1|D-2|D-3 split stays in the Rollovers panel
@@ -1052,7 +1075,7 @@ const App = {
         fontSize:'10px', fontWeight:'500', letterSpacing:'.02em', color:capMuted } },
         h('div',{ style:{ flex:'1', minWidth:'0', paddingLeft:'16px' } }, 'Bike models'),
         h('div',{ style:{ width:CAP_W, flex:'none', textAlign:'center',
-          borderLeft:'1px solid var(--color-divider)' } }, 'Cap. avail.'),
+          borderLeft:'1px solid var(--color-divider)' } }, 'Total capacity'),
         h('div',{ style:{ width:ATT_W, flex:'none', textAlign:'center',
           borderLeft:'1px solid var(--color-divider)' } }, 'Attac. / tot')
       ) : null;
@@ -1062,9 +1085,12 @@ const App = {
             borderTop:'1px solid var(--color-divider)' } },
           h('span',{ style:{ flex:'1', minWidth:'0', paddingLeft:'16px', whiteSpace:'nowrap',
             overflow:'hidden', textOverflow:'ellipsis' } }, mod.label),
-          h('span',{ style:{ width:CAP_W, flex:'none', textAlign:'center', fontSize:'13px',
+          h('span',{ title:'Declared '+this.declaredCapacity(yc, mod, rel, slots, P)
+              +((rel<=0 && mod.roll) ? (' + rollover '+mod.roll.total) : ' (no rollover yet)'),
+            style:{ width:CAP_W, flex:'none', textAlign:'center', fontSize:'13px',
             fontVariantNumeric:'tabular-nums', borderLeft:'1px solid var(--color-divider)',
-            alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } }, String(mod.cap)),
+            alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } },
+            String(this.totalCapacity(yc, mod, rel, slots, P))),
           h('span',{ style:{ width:ATT_W, flex:'none', textAlign:'center', fontSize:'13px',
             fontVariantNumeric:'tabular-nums', borderLeft:'1px solid var(--color-divider)',
             alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } },
