@@ -43,8 +43,9 @@
   --radius-sm:6px; --radius-md:10px; --radius-lg:14px; --radius-pill:999px;
   --shadow-md:0 2px 10px rgba(34,34,34,0.10), 0 0 0 1px #e8e8e8;
 
-  --left-w:196px;   /* left rail: model label + Total capacity (74) */
-  --att-w:0px;      /* Attac./tot column — widens with the Rollovers panel */
+  --left-w:196px;   /* left rail: model label (122) + capacity column (74) */
+  --cap-w:74px;     /* capacity column: the total when collapsed */
+  --att-w:0px;      /* the "+ rollover" half — widens with the Rollovers panel */
   --panel-w:162px;  /* side-panel: D-1|D-2|D-3 split (86) + Attached (62) */
 }
 
@@ -93,13 +94,13 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 /* Rollovers is one toggle over two places: the Attac./tot column in the left
    rail and the D-1|D-2|D-3 panel. The column animates to zero width rather than
    unmounting, so the rail reflows in step with the panel instead of snapping. */
-.app-root.panel-open{--left-w:258px;--att-w:62px}
+.app-root.panel-open{--left-w:306px;--cap-w:114px;--att-w:70px}
 .left-rail{transition:flex-basis .28s cubic-bezier(.4,0,.2,1),width .28s cubic-bezier(.4,0,.2,1)}
 .att-col{width:var(--att-w);flex:none;overflow:hidden;white-space:nowrap;text-align:center;
-  border-left:1px solid var(--color-divider);
-  transition:width .28s cubic-bezier(.4,0,.2,1),border-left-width .28s}
-.app-root:not(.panel-open) .att-col{border-left-width:0}
-@media (prefers-reduced-motion:reduce){.left-rail,.att-col,.aside-rail{transition:none}}
+  transition:width .28s cubic-bezier(.4,0,.2,1)}
+.cap-col{width:var(--cap-w);flex:none;overflow:hidden;white-space:nowrap;text-align:center;
+  border-left:1px solid var(--color-divider);transition:width .28s cubic-bezier(.4,0,.2,1)}
+@media (prefers-reduced-motion:reduce){.left-rail,.att-col,.cap-col,.aside-rail{transition:none}}
 
 /* section nav — menu button + left drawer with vertical tabs */
 .menu-btn{width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;
@@ -653,11 +654,11 @@ const App = {
       return h('div',{ style: cardStyle },
         h('div',{ style:{ height:this.collapsedH+'px', display:'flex', alignItems:'center',
           fontSize:'13px', fontVariantNumeric:'tabular-nums' } },
-          h('div',{ style:{ width:col3, flex:'none', textAlign:'center' } },
-            showRoll ? r.split.join(' | ') : h('span',{style:dash},'—')),
-          h('div',{ style:{ width:colAtt, flex:'none', textAlign:'center',
+          h('div',{ style:{ width:colAtt, flex:'none', textAlign:'center' } },
+            showRoll ? String(r.attac) : h('span',{style:dash},'—')),
+          h('div',{ style:{ width:col3, flex:'none', textAlign:'center',
             borderLeft:'1px solid var(--color-divider)' } },
-            showRoll ? String(r.attac) : h('span',{style:dash},'—'))
+            showRoll ? r.split.join(' | ') : h('span',{style:dash},'—'))
         )
       );
     }
@@ -673,20 +674,20 @@ const App = {
       // sub-headers (28px) — aligns with the Planned/Booked/Attached row
       h('div',{ style:{ height:this.subH+'px', display:'flex', alignItems:'center',
         borderBottom:'1px solid var(--color-divider)' } },
-        h('div',{ style:{ width:col3, flex:'none', textAlign:'center', fontSize:'10px', color:muted } }, 'D‑1 | D‑2 | D‑3'),
-        h('div',{ style:{ width:colAtt, flex:'none', textAlign:'center', fontSize:'10px', color:muted,
-          borderLeft:'1px solid var(--color-divider)' } }, 'Attached')
+        h('div',{ style:{ width:colAtt, flex:'none', textAlign:'center', fontSize:'10px', color:muted } }, 'Attached'),
+        h('div',{ style:{ width:col3, flex:'none', textAlign:'center', fontSize:'10px', color:muted,
+          borderLeft:'1px solid var(--color-divider)' } }, 'D‑1 | D‑2 | D‑3')
       ),
       // per-model rows (38px each)
       yc.models.map((mod,mi)=>
         h('div',{ style:{ height:this.modelH+'px', display:'flex', alignItems:'center', fontSize:'13px',
           fontVariantNumeric:'tabular-nums',
           borderBottom: mi<yc.models.length-1 ? '1px solid var(--color-divider)':'none' } },
-          h('div',{ style:{ width:col3, flex:'none', textAlign:'center' } },
-            showRoll ? mod.roll.split.join(' | ') : h('span',{style:dash},'—')),
-          h('div',{ style:{ width:colAtt, flex:'none', textAlign:'center',
+          h('div',{ style:{ width:colAtt, flex:'none', textAlign:'center' } },
+            showRoll ? String(mod.roll.attac) : h('span',{style:dash},'—')),
+          h('div',{ style:{ width:col3, flex:'none', textAlign:'center',
             borderLeft:'1px solid var(--color-divider)' } },
-            showRoll ? String(mod.roll.attac) : h('span',{style:dash},'—'))
+            showRoll ? mod.roll.split.join(' | ') : h('span',{style:dash},'—'))
         )
       )
     );
@@ -1081,7 +1082,7 @@ const App = {
       const onToggle = ()=> this.setState(ss=>({ [P.expanded]: Object.assign({}, ss[P.expanded], {[rowKey]: !ss[P.expanded][rowKey]}) }));
 
       // ===== LEFT rail card (name + model labels + available capacity) =====
-      const CAP_W = '74px';
+      const panelOpen = !!st.panelOpen;
       const capMuted = 'color-mix(in srgb, var(--color-text) 65%, transparent)';
       // attached/total sits with capacity, where it can be read against it;
       // the D-1|D-2|D-3 split stays in the Rollovers panel
@@ -1093,9 +1094,8 @@ const App = {
         borderTop:'1px solid var(--color-divider)', background:'var(--color-neutral-900)',
         fontSize:'10px', fontWeight:'500', letterSpacing:'.02em', color:capMuted } },
         h('div',{ style:{ flex:'1', minWidth:'0', paddingLeft:'16px' } }, 'Bike models'),
-        h('div',{ style:{ width:CAP_W, flex:'none', textAlign:'center',
-          borderLeft:'1px solid var(--color-divider)' } }, 'Total capacity'),
-        h('div',{ class:'att-col' }, 'Rollover')
+        h('div',{ class:'cap-col' }, panelOpen ? 'Declared capacity' : 'Total capacity'),
+        h('div',{ class:'att-col' }, '+ Rollovers')
       ) : null;
       const modelLabelRows = expanded ? yc.models.map((mod)=>
         h('div',{ hover:{ background:'color-mix(in srgb, var(--color-text) 4%, transparent)' },
@@ -1103,15 +1103,16 @@ const App = {
             borderTop:'1px solid var(--color-divider)' } },
           h('span',{ style:{ flex:'1', minWidth:'0', paddingLeft:'16px', whiteSpace:'nowrap',
             overflow:'hidden', textOverflow:'ellipsis' } }, mod.label),
-          h('span',{ title:'Declared '+this.declaredCapacity(yc, mod, rel, slots, P)
+          h('span',{ class:'cap-col',
+            title:'Declared '+this.declaredCapacity(yc, mod, rel, slots, P)
               +((rel<=0 && mod.roll) ? (' + rollover '+mod.roll.total) : ' (no rollover yet)'),
-            style:{ width:CAP_W, flex:'none', textAlign:'center', fontSize:'13px',
-            fontVariantNumeric:'tabular-nums', borderLeft:'1px solid var(--color-divider)',
+            style:{ fontSize:'13px', fontVariantNumeric:'tabular-nums',
             alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } },
-            String(this.totalCapacity(yc, mod, rel, slots, P))),
+            String(panelOpen ? this.declaredCapacity(yc, mod, rel, slots, P)
+                             : this.totalCapacity(yc, mod, rel, slots, P))),
           h('span',{ class:'att-col', style:{ fontSize:'13px', fontVariantNumeric:'tabular-nums',
             alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } },
-            (rollShow && mod.roll) ? String(mod.roll.total) : attDash.cloneNode(true))
+            (rollShow && mod.roll) ? ('+ '+mod.roll.total) : attDash.cloneNode(true))
         )
       ) : null;
 
