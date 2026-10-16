@@ -1022,18 +1022,9 @@ const App = {
       whiteSpace:'nowrap', fontSize:'12px', color:accent, transition:'opacity .2s',
       pointerEvents:'none', opacity: statusLabel?'1':'0' } }, statusLabel || 'Published ✓');
 
-    // Viewing options now uses the segmented treatment the People/Business tabs
-    // had, and sits in their old slot. Fleet (in the filter row) took over the
-    // People/Business switch.
-    const pivotSeg = isBiz ? null : this.segmented([
-      { label:'Yulu centers', active: pivot==='yc',      onClick: ()=> this.setState({[P.pivot]:'yc'}) },
-      { label:'Weekday',      active: pivot==='weekday', onClick: ()=> this.setState({[P.pivot]:'weekday'}) },
-    ]);
-
     const topRow = h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', padding:'12px 20px',
       background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
       this.makeMenuBtn(),
-      pivotSeg,
       this.filtersButton(),
       headCenter,
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', marginLeft:'auto' } },
@@ -1666,12 +1657,28 @@ const App = {
         +'<circle cx="9" cy="3.6" r="1.5"/><circle cx="9" cy="9" r="1.5"/><circle cx="9" cy="14.4" r="1.5"/></svg>' });
 
     if(!st.moreOpen) return trigger;
+    // Business has no pivot, so the viewing block only applies to the rest
+    const isBiz = st[P.view] === 'business';
+    const pivot = st[P.pivot];
+    const viewing = isBiz ? null : [
+      h('div',{ style:{ padding:'6px 12px 2px', fontSize:'11px', fontWeight:'500',
+        color:'var(--color-text-2)' } }, 'Viewing options'),
+      h('div',{ style:{ padding:'4px 12px 10px' } }, this.segmented([
+        { label:'Yulu centers', active: pivot==='yc',
+          onClick: ()=> this.setState({[P.pivot]:'yc'}) },
+        { label:'Weekday',      active: pivot==='weekday',
+          onClick: ()=> this.setState({[P.pivot]:'weekday'}) },
+      ])),
+      h('div',{ style:{ height:'1px', background:'var(--color-divider)', margin:'2px 6px 6px' } }),
+    ];
     return h('div',{ style:{ position:'relative' } }, trigger,
       h('div',{ onClick: ()=> this.setState({moreOpen:false}),
         style:{ position:'fixed', inset:'0', zIndex:'40' } }),
       h('div',{ style:{ position:'absolute', top:'calc(100% + 6px)', right:'0', zIndex:'50',
-        minWidth:'170px', background:'var(--color-surface)', border:'1px solid var(--color-neutral-700)',
+        width:'max-content', minWidth:'170px', background:'var(--color-surface)',
+        border:'1px solid var(--color-neutral-700)',
         borderRadius:'10px', boxShadow:'var(--shadow-md)', padding:'6px' } },
+        viewing,
         item('Bulk Upload', true, ()=> this.setState({ uploadOpen:true, moreOpen:false })),
         item('Publish', canPublish, ()=>{ this.setState({moreOpen:false}); this.openPublishDialog(); })));
   },
