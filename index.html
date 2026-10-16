@@ -1663,13 +1663,14 @@ const App = {
     const viewing = isBiz ? null : [
       h('div',{ style:{ padding:'6px 12px 2px', fontSize:'11px', fontWeight:'500',
         color:'var(--color-text-2)' } }, 'Group by'),
-      // rows ARE the grouping: 'weekday' stacks the days for one centre,
-      // 'yc' stacks the centres for one day
+      // Group by names what the HEADER lets you move through: Weekdays puts the
+      // date rail up top (rows are the centres for that day); YCs puts the centre
+      // picker up top (rows are the days for that centre).
       h('div',{ style:{ padding:'4px 12px 10px' } }, this.segmented([
-        { label:'Weekdays', active: pivot==='weekday',
-          onClick: ()=> this.setState({[P.pivot]:'weekday'}) },
-        { label:'YCs',      active: pivot==='yc',
+        { label:'Weekdays', active: pivot==='yc',
           onClick: ()=> this.setState({[P.pivot]:'yc'}) },
+        { label:'YCs',      active: pivot==='weekday',
+          onClick: ()=> this.setState({[P.pivot]:'weekday'}) },
       ])),
       h('div',{ style:{ height:'1px', background:'var(--color-divider)', margin:'2px 6px 6px' } }),
     ];
