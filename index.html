@@ -190,6 +190,9 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 .sc-slot.pickable:hover{filter:brightness(.97)}
 .sc-slot.picked{border-color:var(--color-accent) !important;box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent) 30%,transparent)}
 .sc-type{font-size:10px;font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+.sc-type.tappable{cursor:pointer;padding:1px 5px;border-radius:999px;
+  border:1px solid var(--color-neutral-600);background:var(--color-surface)}
+.sc-type.tappable:hover{border-color:var(--color-accent);color:var(--color-accent)}
 .sc-ghost{position:absolute;top:0;bottom:0;pointer-events:none;display:none;z-index:6}
 .sc-ghost .line{position:absolute;top:0;bottom:0;left:0;border-left:2px dashed var(--color-accent)}
 .sc-ghost .lbl{position:absolute;top:3px;left:3px;white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums;
@@ -2141,10 +2144,18 @@ const App = {
             borderRadius:'6px', pointerEvents: st.typeMode?'auto':'none', fontVariantNumeric:'tabular-nums',
             background: sl.blocked ? 'repeating-linear-gradient(45deg, color-mix(in srgb,var(--color-text) 6%,transparent) 0 6px, transparent 6px 12px), var(--color-surface)' : 'var(--color-neutral-900)',
             border:'1px solid var(--color-neutral-600)', color:'var(--color-text)' } },
-          w>44 ? h('span',{ style:{ fontWeight:'700', fontSize:'13px' } }, 'Slot '+(si+1)) : null,
+          // Editing drops the slot number — the row is being reshaped, so the
+          // numbering is in flux and the span itself is what matters.
+          (!st.slotEdit && w>44) ? h('span',{ style:{ fontWeight:'700', fontSize:'13px' } }, 'Slot '+(si+1)) : null,
           h('span',{ class:'sc-rng', style:{ fontSize:'11px', color:'var(--color-text-2)' } }, rng),
-          w>70 ? h('span',{ class:'sc-type', style:{ color: sl.blocked?'var(--color-text-2)':'var(--color-text-3)' } },
-            sl.blocked?'Blocked':'Planned') : null);
+          w>70 ? h('span',{ class:'sc-type'+(st.slotEdit?' tappable':''),
+            title: st.slotEdit ? 'Click to switch between Planned and Blocked' : null,
+            style:{ color: sl.blocked?'var(--color-text-2)':'var(--color-text-3)',
+              // only this label takes clicks, so clicking the rest of the chip
+              // still cuts the slot
+              pointerEvents: st.slotEdit?'auto':'none' },
+            onClick: st.slotEdit ? (e)=>{ e.stopPropagation(); this.toggleSlotType(rday, yc.id, si); } : null },
+            (sl.blocked?'Blocked':'Planned') + (st.slotEdit?' \u25be':'')) : null);
         if(st.typeMode) el.addEventListener('click',(e)=>{ e.stopPropagation(); this.toggleTypeSlot(selKey); });
         slotEls.push(el); rowInner.appendChild(el);
       });
@@ -2359,6 +2370,14 @@ const App = {
     this.setState({ typeMode: !this.state.typeMode, typeSel:{}, typePick:null,
       slotEdit:false, bulkSel:{}, bulkResult:null, slotSel:null });
   },
+  // flip a single slot between Planned and Blocked, straight from its chip
+  toggleSlotType(rday, ycId, idx){
+    const yc = this.SLOT_YC.find(y=> y.id===ycId); if(!yc) return;
+    const slots = this.getSlots(rday, yc).slice();
+    if(!slots[idx]) return;
+    slots[idx] = Object.assign({}, slots[idx], { blocked: !slots[idx].blocked });
+    this.setSlots(rday, ycId, slots);
+  },
   toggleTypeSlot(key){
     const t = Object.assign({}, this.state.typeSel);
     if(t[key]) delete t[key]; else t[key] = true;
@@ -2495,7 +2514,7 @@ const App = {
       sep(),
       h('span',{ style:{ fontSize:'13px', color:muted, whiteSpace:'nowrap' } },
         count ? 'Click the timeline to slice all selected · merge removes that boundary on all of them'
-              : 'Click a slot to slice it · tick rows to slice or merge several at once'),
+              : 'Click a slot to slice it · tick rows to slice or merge several · click a slot\u2019s type to switch it'),
       st.bulkResult ? [ sep(),
         h('span',{ style:{ fontSize:'12px', color: st.bulkResult.applied?accent:muted, whiteSpace:'nowrap' } },
           '✓ '+st.bulkResult.applied+' '+(st.bulkResult.verb||'sliced')
