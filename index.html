@@ -1533,16 +1533,21 @@ const App = {
         items: f.opts.map(o=>({ label:o, active: st.draftFilters[f.id]===o,
           onClick: ()=>{ this.state.draftFilters = Object.assign({}, this.state.draftFilters, {[f.id]:o});
             this.setState({ filterOpenId:null }); } })) }));
+    const def = this.defaultFilters();
     const dirty = this.FILTERS.some(f=> st.draftFilters[f.id] !== st.filters[f.id]);
+    // something to clear = anything off its default, whether applied or just staged
+    const resettable = this.FILTERS.some(f=>
+      st.filters[f.id] !== def[f.id] || st.draftFilters[f.id] !== def[f.id]);
     return h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', flexWrap:'wrap',
       padding:'14px 20px', background:'var(--color-neutral-100)',
       borderBottom:'1px solid var(--color-divider)' } },
       this.FILTERS.map(cell),
-      h('div',{ style:{ display:'flex', alignItems:'center', gap:'10px', marginLeft:'auto' } },
-        h('button',{ class:'btn btn-primary', onClick: ()=> this.resetFilters(),
-          style:{ height:'38px' } }, 'Reset'),
+      // sits with the filters rather than pushed to the far edge
+      h('div',{ style:{ display:'flex', alignItems:'center', gap:'10px' } },
         h('button',{ class:'btn btn-primary'+(dirty?' btn-solid':''), disabled: !dirty,
-          onClick: ()=> this.applyFilters(), style:{ height:'38px' } }, 'Apply')));
+          onClick: ()=> this.applyFilters(), style:{ height:'38px' } }, 'Apply'),
+        h('button',{ class:'btn btn-primary', disabled: !resettable,
+          onClick: ()=> this.resetFilters(), style:{ height:'38px' } }, 'Reset')));
   },
   activeFilterCount(){
     const st = this.state, def = this.defaultFilters();
