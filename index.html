@@ -491,9 +491,9 @@ const App = {
         display:'flex', flexDirection:'column', gap:'6px' } },
         h('div',{ style:{ fontSize:'11px', fontWeight:'500', color:'var(--color-text-2)' } }, 'Fleet'),
         h('div',{ style:{ display:'flex' } }, this.segmented([
-          { label:'Yulu Corporate', active: st.view!=='business',
+          { label:'Corporate', active: st.view!=='business',
             onClick: ()=> this.setState({ view:'people' }) },
-          { label:'Yulu Business',  active: st.view==='business',
+          { label:'Business',  active: st.view==='business',
             onClick: ()=> this.setState({ view:'business' }) },
         ]))
       ),
