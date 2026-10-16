@@ -186,9 +186,6 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 .sc-slot{transition:filter .12s}
 .sc-slot.editable:hover{filter:brightness(1.05)}
 /* Blocked slots keep the same stroke; only the fill changes to the off-hours hatch. */
-.sc-slot.pickable{pointer-events:auto;cursor:pointer}
-.sc-slot.pickable:hover{filter:brightness(.97)}
-.sc-slot.picked{border-color:var(--color-accent) !important;box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent) 30%,transparent)}
 .sc-type{font-size:10px;font-weight:500;letter-spacing:.04em;text-transform:uppercase}
 .sc-type.tappable{cursor:pointer;padding:1px 5px;border-radius:999px;
   border:1px solid var(--color-neutral-600);background:var(--color-surface)}
@@ -358,9 +355,6 @@ const App = {
     slotDirty: false,
     slotPublished: false,
     slotSel: null,        // (dormant) selected boundary — panel dropped for single edits
-    typeMode: false,      // 'Define slot type' mode: slots become individually selectable
-    typeSel: {},          // key `day|ycId|slotIdx` -> true, while typeMode is on
-    typePick: null,       // 'planned' | 'blocked' — the type staged for Update
     slotEdit: false,      // 'Edit slots' mode: slicing/resizing on. Off = view only.
                           // While on, ticking rows makes one cut apply to all of them.
     bulkSel: {},          // selected row keys `rday|ycId` -> true
@@ -940,7 +934,7 @@ const App = {
     return h('div',{ class:'app-root'+(st.navOpen?' nav-open':''), ref:(el)=>{ this._rootEl=el; },
       style:{ minHeight:'100vh', background:'var(--color-bg)', color:'var(--color-text)', fontSize:'14px' } },
       this.buildNav(), topBar, main,
-      st.slotEdit ? this.buildBulkBar() : (st.typeMode ? this.buildTypeBar() : null));
+      st.slotEdit ? this.buildBulkBar() : null);
   },
 
   buildPlanner(P){
@@ -2134,14 +2128,11 @@ const App = {
       slots.forEach((sl,si)=>{
         const w = (sl.end-sl.start)*HW;
         const rng = w>60 ? this.hhmm(sl.start)+'–'+this.hhmm(sl.end) : (w>34 ? this.hhmm(sl.start) : '');
-        const selKey = rday+'|'+yc.id+'|'+si;
-        const picked = !!st.typeSel[selKey];
-        const el = h('div',{ class:'sc-slot'+(st.slotEdit?' editable':'')
-            +(st.typeMode?' pickable':'')+(picked?' picked':''),
+        const el = h('div',{ class:'sc-slot'+(st.slotEdit?' editable':''),
           title: this.hhmm(sl.start)+'–'+this.hhmm(sl.end)+' · '+(sl.blocked?'Blocked':'Planned'),
           style:{ position:'absolute', left:(sl.start*HW)+'px', width:w+'px', top:'4px', bottom:'4px',
             display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'1px', lineHeight:'1.05',
-            borderRadius:'6px', pointerEvents: st.typeMode?'auto':'none', fontVariantNumeric:'tabular-nums',
+            borderRadius:'6px', pointerEvents:'none', fontVariantNumeric:'tabular-nums',
             background: sl.blocked ? 'repeating-linear-gradient(45deg, color-mix(in srgb,var(--color-text) 6%,transparent) 0 6px, transparent 6px 12px), var(--color-surface)' : 'var(--color-neutral-900)',
             border:'1px solid var(--color-neutral-600)', color:'var(--color-text)' } },
           // Editing drops the slot number — the row is being reshaped, so the
@@ -2156,7 +2147,6 @@ const App = {
               pointerEvents: st.slotEdit?'auto':'none' },
             onClick: st.slotEdit ? (e)=>{ e.stopPropagation(); this.toggleSlotType(rday, yc.id, si); } : null },
             (sl.blocked?'Blocked':'Planned') + (st.slotEdit?' \u25be':'')) : null);
-        if(st.typeMode) el.addEventListener('click',(e)=>{ e.stopPropagation(); this.toggleTypeSlot(selKey); });
         slotEls.push(el); rowInner.appendChild(el);
       });
 
@@ -2279,8 +2269,8 @@ const App = {
       return rowInner;
   },
 
-  // "Edit slots" / "Define slot type" — the two slot modes, used by the
-  // merged Template planning header.
+  // "Edit slots" — the slot mode in the merged Template planning header.
+  // Types are switched from each chip, so there is no separate type mode.
   slotModeButtons(){
     const st = this.state;
     const btn = (on, onClick, title, svg, label)=> h('button',{ onClick, title,
@@ -2295,16 +2285,12 @@ const App = {
       btn(st.slotEdit, ()=> this.toggleBulk(), 'Slice and resize slots',
         '<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="6" height="5" rx="1"/><rect x="2.5" y="10" width="6" height="5" rx="1"/><path d="M11.5 5.5h4M11.5 12.5h4"/></svg>',
         'Edit slots'),
-      btn(st.typeMode, ()=> this.toggleTypeMode(), 'Set slots as Planned or Blocked',
-        '<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="13" height="8" rx="1.5"/><path d="M6 5 3 13M11 5 8 13"/></svg>',
-        'Define slot type'),
     ];
   },
   // true while either slot mode is on — template inputs are blocked then
-  slotModeOn(){ return !!(this.state.slotEdit || this.state.typeMode); },
+  slotModeOn(){ return !!this.state.slotEdit; },
 
-  toggleBulk(){ this.setState({ slotEdit: !this.state.slotEdit, bulkSel:{}, bulkResult:null, slotSel:null,
-    typeMode:false, typeSel:{}, typePick:null }); },
+  toggleBulk(){ this.setState({ slotEdit: !this.state.slotEdit, bulkSel:{}, bulkResult:null, slotSel:null }); },
   // rows that can actually take a cut — closed days are never selectable
   selectableRowKeys(defs){
     return (defs || this._bulkDefs || [])
@@ -2371,10 +2357,6 @@ const App = {
   // anywhere). Selection is per slot, so indices are safe: slicing is off in
   // this mode, which means a slot's index can't shift under a live selection.
   // ======================================================================
-  toggleTypeMode(){
-    this.setState({ typeMode: !this.state.typeMode, typeSel:{}, typePick:null,
-      slotEdit:false, bulkSel:{}, bulkResult:null, slotSel:null });
-  },
   // flip a single slot between Planned and Blocked, straight from its chip
   toggleSlotType(rday, ycId, idx){
     const yc = this.SLOT_YC.find(y=> y.id===ycId); if(!yc) return;
@@ -2383,103 +2365,6 @@ const App = {
     slots[idx] = Object.assign({}, slots[idx], { blocked: !slots[idx].blocked });
     this.setSlots(rday, ycId, slots);
   },
-  toggleTypeSlot(key){
-    const t = Object.assign({}, this.state.typeSel);
-    if(t[key]) delete t[key]; else t[key] = true;
-    // the staged choice is only meaningful against a selection — drop it when
-    // the selection changes, so Update never applies a type the user can't see
-    this.setState({ typeSel:t, typePick:null });
-  },
-  // every selected slot, resolved back to its row + index
-  typeSelected(){
-    const out = [];
-    Object.keys(this.state.typeSel).forEach(k=>{
-      const p = k.split('|'); const idx = +p[2];
-      const yc = this.SLOT_YC.find(y=> y.id===p[1]); if(!yc) return;
-      const slots = this.getSlots(p[0], yc);
-      if(idx < slots.length) out.push({ key:k, rday:p[0], yc, idx, slot:slots[idx] });
-    });
-    return out;
-  },
-  applySlotType(){
-    const pick = this.state.typePick; if(!pick) return;
-    const blocked = pick==='blocked';
-    const byRow = {};
-    this.typeSelected().forEach(it=>{
-      const rk = it.rday+'|'+it.yc.id;
-      if(!byRow[rk]) byRow[rk] = { rday:it.rday, ycId:it.yc.id, slots:this.getSlots(it.rday,it.yc).slice(), idxs:[] };
-      byRow[rk].idxs.push(it.idx);
-    });
-    let changed = 0;
-    Object.keys(byRow).forEach(rk=>{
-      const r = byRow[rk];
-      r.idxs.forEach(i=>{
-        if(!!r.slots[i].blocked === blocked) return;
-        r.slots[i] = Object.assign({}, r.slots[i], { blocked });
-        changed++;
-      });
-      this.state.slotEdits[rk] = r.slots;
-    });
-    if(changed){ this.state.slotDirty = true; this.persistSlots(); }
-    this.state.typeResult = { changed, type: blocked?'Blocked':'Planned' };
-    this.state.typePick = null;
-    this.render();
-  },
-  buildTypeBar(){
-    const st = this.state, accent='var(--color-accent)',
-          muted='color-mix(in srgb, var(--color-text) 55%, transparent)';
-    const sel = this.typeSelected(), count = sel.length;
-    const nBlocked = sel.filter(x=> x.slot.blocked).length, nPlanned = count - nBlocked;
-    const sep = ()=> h('div',{ style:{ width:'1px', height:'24px', background:'var(--color-divider)' } });
-
-    // tri-state per option: all / some (mixed) / none of the selection is this type
-    const mark = (state)=> h('div',{ style:{ width:'16px', height:'16px', flex:'none', borderRadius:'5px',
-        display:'flex', alignItems:'center', justifyContent:'center', color:'var(--color-accent-100)',
-        border:'1px solid '+(state==='none'?'var(--color-neutral-600)':accent),
-        background: state==='none'?'transparent':accent },
-      html: state==='all'
-        ? '<svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 L6 10.5 L11 4"/></svg>'
-        : (state==='some' ? '<svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 7h7"/></svg>' : '') });
-
-    const opt = (id,label,n)=>{
-      // once a type is staged it wins the display; until then we mirror the selection
-      const state = st.typePick ? (st.typePick===id?'all':'none')
-                  : (count===0 ? 'none' : (n===count ? 'all' : (n>0 ? 'some' : 'none')));
-      const on = state!=='none';
-      return h('button',{ onClick: count? ()=> this.setState({ typePick:id, typeResult:null }) : null,
-        hover: count?{ borderColor:'var(--color-neutral-600)' }:null,
-        style:{ display:'flex', alignItems:'center', gap:'8px', height:'34px', padding:'0 12px', borderRadius:'8px',
-          border:'1px solid '+(on?accent:'var(--color-divider)'),
-          background: on?'color-mix(in srgb, var(--color-accent) 10%, transparent)':'transparent',
-          color: count?'var(--color-text)':muted, cursor: count?'pointer':'default',
-          fontSize:'14px', fontFamily:'var(--font-heading)', fontWeight:'500', opacity: count?'1':'.55' } },
-        mark(state), label);
-    };
-
-    const canApply = !!st.typePick && count>0;
-    return h('div',{ style:{ position:'fixed', left:'50%', bottom:'20px', transform:'translateX(-50%)', zIndex:'45',
-      display:'flex', alignItems:'center', gap:'12px', padding:'10px 16px', borderRadius:'12px',
-      background:'var(--color-surface)', border:'1px solid var(--color-neutral-700)', boxShadow:'var(--shadow-md)' } },
-      h('span',{ style:{ fontSize:'13px', fontWeight:'500', whiteSpace:'nowrap' } },
-        count ? (count+(count===1?' slot selected':' slots selected')) : 'Select slots to set their type'),
-      sep(),
-      opt('planned','Planned',nPlanned),
-      opt('blocked','Blocked',nBlocked),
-      st.typeResult ? [ sep(),
-        h('span',{ style:{ fontSize:'12px', color: st.typeResult.changed?accent:muted, whiteSpace:'nowrap' } },
-          st.typeResult.changed ? ('\u2713 '+st.typeResult.changed+' set to '+st.typeResult.type)
-                                : 'Already '+st.typeResult.type) ] : null,
-      sep(),
-      h('button',{ class:'btn btn-primary'+(canApply?' btn-solid':''), disabled: !canApply,
-        onClick: ()=> this.applySlotType(),
-        style:{ height:'32px', fontSize:'14px' } }, 'Update'),
-      h('button',{ onClick: ()=> this.toggleTypeMode(),
-        hover:{ background:'color-mix(in srgb, var(--color-text) 6%, transparent)' },
-        style:{ height:'32px', padding:'0 14px', background:'transparent', border:'1px solid var(--color-divider)',
-          borderRadius:'8px', color:'var(--color-text)', cursor:'pointer', fontSize:'14px', fontWeight:'500' } }, 'Done')
-    );
-  },
-
   // remove the boundary at T on every selected row (the multi-row counterpart of
   // the per-divider merge). A row without a boundary there is skipped, not forced.
   applyBulkMerge(T){
