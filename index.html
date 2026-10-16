@@ -770,6 +770,7 @@ const App = {
   },
 
   buildTemplates(){
+    this.ensureFilters();
     const st = this.state, HW = this.HOUR_W;
     const muted='color-mix(in srgb, var(--color-text) 55%, transparent)', accent='var(--color-accent)';
     this._scrollEl = null; this._rulerEl = null; this._panelBtn = null;
@@ -788,8 +789,8 @@ const App = {
     const topRow = h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', padding:'12px 20px',
       background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
       this.makeMenuBtn(),
-      h('div',{ style:{ margin:'0 auto' } }, this.labeledCtl('Select centre', ycDd)),
-      h('div',{ style:{ display:'flex', alignItems:'center', gap:'8px' } },
+      this.filtersButton(),
+      h('div',{ style:{ display:'flex', alignItems:'center', gap:'8px', marginLeft:'auto' } },
         h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, pubBtn, pubLbl)));
 
     // ---- ruler (00–24, NO current-time marker) ----
@@ -803,7 +804,8 @@ const App = {
         alignItems:'flex-end', paddingBottom:'2px', fontSize:'14px', fontWeight:'500' } }, 'Time of the day:'),
       h('div',{ class:'tl-ruler', ref:(el)=>{this._rulerEl=el;}, style:{ flex:'1 1 auto', minWidth:'0', overflow:'hidden', margin:'0 10px' } },
         h('div',{ style:{ position:'relative', width:trackW+'px', height:'32px' } }, hourEls)));
-    const topBar = h('div',{ style:{ position:'sticky', top:'0', zIndex:'30', background:'var(--color-bg)' } }, topRow, rulerRow);
+    const topBar = h('div',{ style:{ position:'sticky', top:'0', zIndex:'30', background:'var(--color-bg)' } },
+      topRow, this.buildFilterWrap(), rulerRow);
 
     // ---- rows: Mon–Sun + Holiday, one YC, slots positioned by time, empty template inputs ----
     const rowDefs = this.TPL_DAYS.map(([k,l])=>({day:k, label:l}))
@@ -1458,25 +1460,55 @@ const App = {
   // ======================================================================
   // Filter row, mirroring the Rental Capacity Plan screen. Fleet doubles as the
   // Fleet lives in the nav drawer, not here.
-  FILTERS: [
-    { id:'city',    label:'City',               opts:['Bangalore','Delhi NCR','Mumbai','Pune'] },
-    { id:'cluster', label:'Cluster',            opts:['ALL','Cluster 1','Cluster 2','Cluster 3'] },
-    { id:'cat',     label:'Bike Category',      opts:['ALL','Dex NV','Dex GR','Miracle'] },
-  ],
+  // Every filter this app knows about. Which ones a section shows is decided by
+  // filtersFor(); the stored values are shared, so moving between sections keeps
+  // a city or centre selection intact.
+  FILTER_DEFS: {
+    city:    { id:'city',    label:'City',          opts:['Bangalore','Delhi NCR','Mumbai','Pune'] },
+    cluster: { id:'cluster', label:'Cluster',       opts:['ALL','Cluster 1','Cluster 2','Cluster 3'] },
+    centre:  { id:'centre',  label:'Select centre', opts:null },   // filled from SLOT_YC
+    cat:     { id:'cat',     label:'Bike Category', opts:['ALL','Dex NV','Dex GR','Miracle'] },
+  },
+  // Slot creation plans one centre at a time and has no bike split, so it drops
+  // Bike Category; day-to-day picks its centre elsewhere, so it drops Select centre.
+  SECTION_FILTERS: {
+    daily:     ['city','cluster','cat'],
+    templates: ['city','cluster','centre','cat'],
+    slots:     ['city','cluster','centre'],
+  },
+  filtersFor(section){
+    const ids = this.SECTION_FILTERS[section || this.state.section] || this.SECTION_FILTERS.daily;
+    return ids.map(id=>{
+      const f = this.FILTER_DEFS[id];
+      return f.id==='centre' ? Object.assign({}, f, { opts: this.SLOT_YC.map(y=> y.name) }) : f;
+    });
+  },
+  get FILTERS(){ return this.filtersFor(); },
   defaultFilters(){
-    const o = {}; this.FILTERS.forEach(f=> o[f.id] = f.opts[0]); return o;
+    const o = {};
+    Object.keys(this.FILTER_DEFS).forEach(id=>{
+      const f = this.FILTER_DEFS[id];
+      o[id] = f.id==='centre' ? this.SLOT_YC[0].name : f.opts[0];
+    });
+    return o;
   },
   ensureFilters(){
     if(!this.state.filters) this.state.filters = this.defaultFilters();
     if(!this.state.draftFilters) this.state.draftFilters = Object.assign({}, this.state.filters);
   },
   applyFilters(){
-    // Fleet moved to the nav drawer, so the view is no longer a filter's business
-    this.setState({ filters: Object.assign({}, this.state.draftFilters), filterOpenId:null });
+    const d = Object.assign({}, this.state.draftFilters);
+    const next = { filters:d, filterOpenId:null };
+    // Select centre drives whichever section's centre the header used to pick
+    const yc = this.SLOT_YC.find(y=> y.name === d.centre);
+    if(yc){ next.tYc = yc.id; next.slotYc = yc.id; }
+    this.setState(next);
   },
   resetFilters(){
     const d = this.defaultFilters();
-    this.setState({ filters:d, draftFilters:Object.assign({},d), filterOpenId:null });
+    const yc = this.SLOT_YC.find(y=> y.name === d.centre) || this.SLOT_YC[0];
+    this.setState({ filters:d, draftFilters:Object.assign({},d), filterOpenId:null,
+      tYc: yc.id, slotYc: yc.id });
   },
   // a segmented pill pair, the treatment the People/Business tabs used
   segmented(items){
@@ -2022,6 +2054,7 @@ const App = {
   },
 
   buildSlots(){
+    this.ensureFilters();
     const st = this.state, HW = this.HOUR_W, day = st.day;
     const accent='var(--color-accent)', muted='color-mix(in srgb, var(--color-text) 55%, transparent)';
     const rowH = 52, gap = 14, trackW = 24*HW+16;
@@ -2089,11 +2122,10 @@ const App = {
       ]});
 
     // ----- center selector: weekday tabs (yc pivot) OR YC picker (weekday pivot) -----
+    // the centre is picked in the filter row now; the weekday tabs stay
     const centerSel = pivot==='yc'
       ? h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'6px', margin:'0 auto' } }, dayTabs)
-      : h('div',{ style:{ margin:'0 auto' } }, this.scDropdown({ label: selYc.name, open: st.ycOpen, minWidth: 200,
-          toggle: ()=> this.setState(ss=>({ ycOpen:!ss.ycOpen, pivotOpen:false, cityOpen:false })),
-          items: this.SLOT_YC.map(y=>({ label:y.name, active: y.id===st.slotYc, onClick: ()=> this.setState({slotYc:y.id, ycOpen:false, slotSel:null, bulkSel:{}, bulkResult:null}) })) }));
+      : null;
 
     const bulkBtn = h('button',{ onClick: ()=> this.toggleBulk(), title:'Slice and resize slots',
       hover: st.slotEdit?null:{ borderColor:'var(--color-neutral-600)' },
@@ -2117,7 +2149,7 @@ const App = {
 
     const topRow = h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', padding:'12px 20px',
       background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
-      this.makeMenuBtn(), centerSel,
+      this.makeMenuBtn(), this.filtersButton(), centerSel,
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', marginLeft:'auto' } },
         bulkBtn, typeBtn,
         this.labeledCtl('Viewing options', pivotDd),
@@ -2141,7 +2173,8 @@ const App = {
       sel ? h('div',{ style:{ flex:'0 0 '+panelW+'px', width:panelW+'px', height:'32px' } }) : null
     );
 
-    const topBar = h('div',{ style:{ position:'sticky', top:'0', zIndex:'30', background:'var(--color-bg)' } }, topRow, rulerRow);
+    const topBar = h('div',{ style:{ position:'sticky', top:'0', zIndex:'30', background:'var(--color-bg)' } },
+      topRow, this.buildFilterWrap(), rulerRow);
 
     // ----- holiday empty state (YC pivot only — every YC lacks holiday hours) -----
     if(this.SHOW_HOLIDAY && pivot==='yc' && day==='hol'){
