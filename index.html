@@ -485,11 +485,17 @@ const App = {
             color:'color-mix(in srgb, var(--color-text) 50%, transparent)', marginBottom:'2px' } }, 'Supply planning'),
           h('div',{ style:{ fontFamily:'var(--font-heading)', fontWeight:'700', fontSize:'17px', lineHeight:'1.1' } }, 'Ops console'))
       ),
-      // business unit lives here now — first item, divided from the section list
+      // Fleet sits here as a segmented pair — city and cluster are filters, but
+      // which fleet you are planning is a mode, not a filter
       h('div',{ style:{ padding:'12px 14px', borderBottom:'1px solid var(--color-divider)',
-        display:'flex', flexDirection:'column', gap:'4px' } },
-        h('div',{ style:{ fontSize:'11px', fontWeight:'500', color:'var(--color-text-2)' } }, 'Select business unit'),
-        this.buildCity()
+        display:'flex', flexDirection:'column', gap:'6px' } },
+        h('div',{ style:{ fontSize:'11px', fontWeight:'500', color:'var(--color-text-2)' } }, 'Fleet'),
+        h('div',{ style:{ display:'flex' } }, this.segmented([
+          { label:'Yulu Corporate', active: st.view!=='business',
+            onClick: ()=> this.setState({ view:'people' }) },
+          { label:'Yulu Business',  active: st.view==='business',
+            onClick: ()=> this.setState({ view:'business' }) },
+        ]))
       ),
       h('div',{ style:{ padding:'8px 0', flex:'1', overflow:'auto' } },
         this.SECTIONS.map(sec=>{
@@ -1458,14 +1464,12 @@ const App = {
   // entry has nothing to reduce from, so it passes straight through.
   // ======================================================================
   // Filter row, mirroring the Rental Capacity Plan screen. Fleet doubles as the
-  // People/Business switch now that the tab pair is gone — see FLEET_VIEW below.
+  // Fleet lives in the nav drawer, not here.
   FILTERS: [
-    { id:'fleet',   label:'Fleet',              opts:['Yulu Corporate','Yulu Business'] },
     { id:'city',    label:'City',               opts:['Bangalore','Delhi NCR','Mumbai','Pune'] },
     { id:'cluster', label:'Cluster',            opts:['ALL','Cluster 1','Cluster 2','Cluster 3'] },
     { id:'cat',     label:'Bike Category',      opts:['ALL','Dex NV','Dex GR','Miracle'] },
   ],
-  FLEET_VIEW: { 'Yulu Corporate':'people', 'Yulu Business':'business' },
   defaultFilters(){
     const o = {}; this.FILTERS.forEach(f=> o[f.id] = f.opts[0]); return o;
   },
@@ -1474,14 +1478,12 @@ const App = {
     if(!this.state.draftFilters) this.state.draftFilters = Object.assign({}, this.state.filters);
   },
   applyFilters(){
-    const d = Object.assign({}, this.state.draftFilters);
-    // Fleet is the only filter wired to real behaviour; the rest are presentational
-    this.setState({ filters:d, filterOpenId:null, view: this.FLEET_VIEW[d.fleet] || 'people' });
+    // Fleet moved to the nav drawer, so the view is no longer a filter's business
+    this.setState({ filters: Object.assign({}, this.state.draftFilters), filterOpenId:null });
   },
   resetFilters(){
     const d = this.defaultFilters();
-    this.setState({ filters:d, draftFilters:Object.assign({},d), filterOpenId:null,
-      view: this.FLEET_VIEW[d.fleet] || 'people' });
+    this.setState({ filters:d, draftFilters:Object.assign({},d), filterOpenId:null });
   },
   // a segmented pill pair, the treatment the People/Business tabs used
   segmented(items){
@@ -1959,48 +1961,6 @@ const App = {
     this.setState({ slotDirty:false, slotPublished:true });
     clearTimeout(this._spt);
     this._spt = setTimeout(()=> this.setState({ slotPublished:false }), 1800);
-  },
-
-  buildCity(){
-    const st = this.state, accent='var(--color-accent)', muted='color-mix(in srgb, var(--color-text) 55%, transparent)';
-    const cityData = [
-      {city:'Bangalore', clusters:['Cluster 1','Cluster 2','Cluster 3'], active:'Cluster 1'},
-      {city:'Delhi', clusters:['Cluster 1','Cluster 2']},
-      {city:'Gurgaon', clusters:['Cluster 1']},
-      {city:'Mumbai', clusters:['Cluster 1','Cluster 2']},
-      {city:'Hyderabad', clusters:['Cluster 1','Cluster 2']},
-    ];
-    const trigger = h('div',{ onClick:()=> this.setState(ss=>({cityOpen:!ss.cityOpen})),
-      hover:{ borderColor:'var(--color-neutral-600)' },
-      style:{ display:'flex', alignItems:'center', gap:'8px', height:'38px', padding:'0 8px 0 12px', minWidth:'170px',
-        background:'var(--color-surface)', border:'1px solid var(--color-divider)', borderRadius:'8px',
-        cursor:'pointer', fontSize:'14px' } },
-      h('span',{style:{flex:'1'}}, 'BLR / Cluster 1'),
-      this.iconEl(st.cityOpen?'arrowUp':'arrowDown', muted));
-    let menu=null;
-    if(st.cityOpen){
-      menu = h('div',{},
-        h('div',{ onClick:()=> this.setState(ss=>({cityOpen:!ss.cityOpen})), style:{ position:'fixed', inset:'0', zIndex:'40' } }),
-        h('div',{ style:{ position:'absolute', top:'calc(100% + 6px)', right:'0', zIndex:'50', width:'240px',
-          maxHeight:'340px', overflow:'auto', background:'var(--color-surface)',
-          border:'1px solid var(--color-neutral-700)', borderRadius:'10px', boxShadow:'var(--shadow-md)', padding:'6px' } },
-          cityData.map(c=>[
-            h('div',{style:{ padding:'8px 10px 4px', fontSize:'10px', letterSpacing:'.08em',
-              textTransform:'uppercase', color:'color-mix(in srgb, var(--color-text) 50%, transparent)' }}, c.city),
-            c.clusters.map(cl=>{
-              const on = c.city==='Bangalore' && cl===c.active;
-              return h('div',{ onClick:()=> this.setState({cityOpen:false}),
-                hover:{ background:'color-mix(in srgb, var(--color-text) 6%, transparent)' },
-                style:{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', borderRadius:'6px',
-                  cursor:'pointer', fontSize:'13px', color: on? accent : 'var(--color-text)',
-                  background: on? 'color-mix(in srgb, var(--color-accent) 12%, transparent)':'transparent' } },
-                h('span',{}, c.city.slice(0,3).toUpperCase()+' / '+cl),
-                h('span',{style:{ marginLeft:'auto', fontSize:'12px', color:accent, opacity: on?'1':'0' }}, '✓'));
-            })
-          ])
-        ));
-    }
-    return h('div',{ style:{ position:'relative' } }, trigger, menu);
   },
 
   // generic dropdown used for the pivot picker and the YC picker
