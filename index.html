@@ -1662,12 +1662,14 @@ const App = {
     const pivot = st[P.pivot];
     const viewing = isBiz ? null : [
       h('div',{ style:{ padding:'6px 12px 2px', fontSize:'11px', fontWeight:'500',
-        color:'var(--color-text-2)' } }, 'Viewing options'),
+        color:'var(--color-text-2)' } }, 'Group by'),
+      // rows ARE the grouping: 'weekday' stacks the days for one centre,
+      // 'yc' stacks the centres for one day
       h('div',{ style:{ padding:'4px 12px 10px' } }, this.segmented([
-        { label:'Yulu centers', active: pivot==='yc',
-          onClick: ()=> this.setState({[P.pivot]:'yc'}) },
-        { label:'Weekday',      active: pivot==='weekday',
+        { label:'Weekdays', active: pivot==='weekday',
           onClick: ()=> this.setState({[P.pivot]:'weekday'}) },
+        { label:'YCs',      active: pivot==='yc',
+          onClick: ()=> this.setState({[P.pivot]:'yc'}) },
       ])),
       h('div',{ style:{ height:'1px', background:'var(--color-divider)', margin:'2px 6px 6px' } }),
     ];
