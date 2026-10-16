@@ -339,6 +339,7 @@ const App = {
     filtersOpen: false, filterOpenId: null,
     filters: null, draftFilters: null,   // applied vs. in-progress; seeded on first build
     uploadOpen: false,   // Bulk upload dialogue — presentational for now
+    moreOpen: false,     // header overflow menu (Bulk Upload, Publish)
     edits: {},
     cityOpen: false,
     published: false,
@@ -1032,11 +1033,9 @@ const App = {
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', marginLeft:'auto' } },
         isBiz ? this.labeledCtl('Select centre', headDropdown) : null,
         schedChip ? h('div',{ style:{ display:'flex', alignItems:'center', height:'38px' } }, schedChip) : null,
-        twoStage ? h('button',{ class:'btn btn-primary', onClick: ()=> this.setState({ uploadOpen:true }),
-          title:'Upload planning numbers from a spreadsheet',
-          style:{ fontSize:'14px', whiteSpace:'nowrap' } }, 'Bulk Upload') : null,
         saveBtn,
-        h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, publishBtn, publishedLabel)
+        h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } },
+          twoStage ? this.buildMoreMenu(canPublish, P) : publishBtn, publishedLabel)
       )
     );
 
@@ -1638,6 +1637,36 @@ const App = {
     const ok = !!st.reduceChoice && (!other || st.reduceText.trim() !== '');
     this._reduceSave.toggleAttribute('disabled', !ok);
     this._reduceSave.classList.toggle('btn-solid', ok);
+  },
+
+  // Header overflow: Bulk Upload and Publish live here; Save stays on the bar.
+  buildMoreMenu(canPublish, P){
+    const st = this.state, accent = 'var(--color-accent)';
+    const item = (label, enabled, onClick)=> h('div',{
+      onClick: enabled ? onClick : null,
+      hover: enabled ? { background:'color-mix(in srgb, var(--color-text) 6%, transparent)' } : null,
+      style:{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 12px', borderRadius:'7px',
+        fontSize:'14px', whiteSpace:'nowrap', fontFamily:'var(--font-heading)', fontWeight:'500',
+        cursor: enabled ? 'pointer' : 'not-allowed',
+        color: enabled ? 'var(--color-text)' : 'var(--color-neutral-400)' } }, label);
+
+    // deliberately NOT wired to _publishBtn: that ref gets disabled when there is
+    // nothing to publish, and Bulk Upload has to stay reachable regardless
+    const trigger = h('button',{ class:'menu-btn'+(st.moreOpen?' active':''),
+      title:'More actions', 'aria-label':'More actions', 'aria-expanded': String(st.moreOpen),
+      onClick: ()=> this.setState({ moreOpen: !st.moreOpen }),
+      html:'<svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">'
+        +'<circle cx="9" cy="3.6" r="1.5"/><circle cx="9" cy="9" r="1.5"/><circle cx="9" cy="14.4" r="1.5"/></svg>' });
+
+    if(!st.moreOpen) return trigger;
+    return h('div',{ style:{ position:'relative' } }, trigger,
+      h('div',{ onClick: ()=> this.setState({moreOpen:false}),
+        style:{ position:'fixed', inset:'0', zIndex:'40' } }),
+      h('div',{ style:{ position:'absolute', top:'calc(100% + 6px)', right:'0', zIndex:'50',
+        minWidth:'170px', background:'var(--color-surface)', border:'1px solid var(--color-neutral-700)',
+        borderRadius:'10px', boxShadow:'var(--shadow-md)', padding:'6px' } },
+        item('Bulk Upload', true, ()=> this.setState({ uploadOpen:true, moreOpen:false })),
+        item('Publish', canPublish, ()=>{ this.setState({moreOpen:false}); this.openPublishDialog(); })));
   },
 
   // Bulk upload — presentational only for now: it shows the flow and the file
