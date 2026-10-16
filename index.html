@@ -160,6 +160,9 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 .filter-wrap{display:grid;grid-template-rows:0fr;
   transition:grid-template-rows .26s cubic-bezier(.4,0,.2,1)}
 .filter-wrap>.filter-inner{overflow:hidden;min-height:0}
+/* the sticky header sits at z-index 30; lift an open filter dropdown above
+   the ruler row and the timeline that follow it */
+.filter-wrap.open{position:relative;z-index:35}
 .filter-wrap.open{grid-template-rows:1fr}
 .filter-wrap:not(.open){pointer-events:none}
 @media (prefers-reduced-motion:reduce){.filter-wrap{transition:none}}
@@ -1489,6 +1492,11 @@ const App = {
   // its final state has nothing to animate from. Mount it in the PREVIOUS state,
   // then flip the class a frame later so the transition actually runs.
   buildFilterWrap(){
+    // The 0fr->1fr animation needs overflow:hidden on the inner node, and that
+    // same rule would clip a dropdown opened inside the row. A dropdown can only
+    // be open once the row is fully open, so keying overflow off `filterOpenId`
+    // releases the clip exactly when it matters and never mid-animation — no
+    // timers, and nothing that a re-render can drop on the floor.
     return h('div',{ class:'filter-wrap', ref:(el)=>{
         const open = this.state.filtersOpen;
         const was = (this._filtersWasOpen === undefined) ? open : this._filtersWasOpen;
@@ -1502,7 +1510,9 @@ const App = {
         // next toggle mounts already-open with nothing to animate from
         this._filtersWasOpen = open;
       } },
-      h('div',{ class:'filter-inner' }, this.buildFilterRow()));
+      h('div',{ class:'filter-inner',
+        style: this.state.filterOpenId ? { overflow:'visible' } : null },
+        this.buildFilterRow()));
   },
   buildFilterRow(){
     const st = this.state;
