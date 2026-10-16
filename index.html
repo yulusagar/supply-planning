@@ -2247,6 +2247,11 @@ const App = {
         const hideAll = ()=>{ for(const k in this._bulkGhosts) this._bulkGhosts[k].el.style.display='none'; };
         rowInner.addEventListener('mousemove',(e)=>{
           if(this._scDragging){ hideAll(); ghost.style.display='none'; return; }
+          // over the type pill a click switches the type, it does not cut — so
+          // drop the cut line rather than promising a slice that won't happen
+          if(e.target.closest && e.target.closest('.sc-type.tappable')){
+            hideAll(); ghost.style.display='none'; rowInner.style.cursor='pointer'; return;
+          }
           const rect = rowInner.getBoundingClientRect();
           const t = this.snap15((e.clientX-rect.left)/HW);
           if(anySel()){ previewAll(t); rowInner.style.cursor='crosshair'; return; }
