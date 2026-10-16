@@ -1304,8 +1304,15 @@ const App = {
         });
       }
 
-      midBlocks.push(h('div',{ style:{ marginBottom:'24px',
-        borderBottom: isLast ? 'none' : '1px solid var(--color-divider)' } }, bandChildren));
+      // Rows are dates in this pivot, so the current-time line means nothing on a
+      // past or future row — draw it inside today's block instead of over them all.
+      const rowNowMarker = (showNowMarker && pivot==='weekday' && !isBiz && rel===0)
+        ? h('div',{ style:{ position:'absolute', left:(now*HW)+'px', top:'0', bottom:'0', width:'2px',
+            marginLeft:'-1px', background:'var(--color-brand)', zIndex:'4', pointerEvents:'none' } })
+        : null;
+      midBlocks.push(h('div',{ style:{ position:'relative', marginBottom:'24px',
+        borderBottom: isLast ? 'none' : '1px solid var(--color-divider)' } },
+        bandChildren, rowNowMarker));
 
       // ===== side PANEL card =====
       panelCards.push(this.panelCard(yc, rel, expanded));
@@ -1322,8 +1329,10 @@ const App = {
       h('div',{ style:{ position:'relative', width:(24*HW+16)+'px',
         backgroundImage:'repeating-linear-gradient(to right, transparent 0, transparent '+(HW-1)+'px, color-mix(in srgb, var(--color-text) 6%, transparent) '+(HW-1)+'px, color-mix(in srgb, var(--color-text) 6%, transparent) '+HW+'px)' } },
         // vertical "now" playhead running down from the top arrow — its overlap marks the current slot(s)
-        showNowMarker ? h('div',{ style:{ position:'absolute', left:(now*HW)+'px', top:'0', bottom:'0', width:'2px',
-          marginLeft:'-1px', background:'var(--color-brand)', zIndex:'4', pointerEvents:'none' } }) : null,
+        (showNowMarker && !(pivot==='weekday' && !isBiz))
+          ? h('div',{ style:{ position:'absolute', left:(now*HW)+'px', top:'0', bottom:'0', width:'2px',
+              marginLeft:'-1px', background:'var(--color-brand)', zIndex:'4', pointerEvents:'none' } })
+          : null,
         h('div',{ style:{ height:'16px' } }), midBlocks)
     );
 
@@ -2113,14 +2122,6 @@ const App = {
     const pubLbl = h('span',{ style:{ position:'absolute', top:'100%', right:'0', marginTop:'4px',
       whiteSpace:'nowrap', fontSize:'12px', color:accent, pointerEvents:'none', opacity: st.slotPublished?'1':'0' } }, 'Slots updated ✓');
 
-    // ----- pivot picker (after the menu button) -----
-    const pivotDd = this.scDropdown({ label: pivot==='yc' ? 'Yulu centers' : 'Weekday', open: st.pivotOpen, minWidth: 150,
-      toggle: ()=> this.setState(ss=>({ pivotOpen:!ss.pivotOpen, ycOpen:false, cityOpen:false })),
-      items: [
-        {label:'Yulu centers', active: pivot==='yc',      onClick: ()=> this.setState({slotPivot:'yc', pivotOpen:false, slotSel:null})},
-        {label:'Weekday',      active: pivot==='weekday', onClick: ()=> this.setState({slotPivot:'weekday', pivotOpen:false, slotSel:null})},
-      ]});
-
     // ----- center selector: weekday tabs (yc pivot) OR YC picker (weekday pivot) -----
     // the centre is picked in the filter row now; the weekday tabs stay
     const centerSel = pivot==='yc'
@@ -2152,7 +2153,6 @@ const App = {
       this.makeMenuBtn(), this.filtersButton(), centerSel,
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', marginLeft:'auto' } },
         bulkBtn, typeBtn,
-        this.labeledCtl('Viewing options', pivotDd),
         h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, pubBtn, pubLbl))
     );
 
