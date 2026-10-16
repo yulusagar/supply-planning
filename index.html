@@ -358,7 +358,7 @@ const App = {
     typeMode: false,      // 'Define slot type' mode: slots become individually selectable
     typeSel: {},          // key `day|ycId|slotIdx` -> true, while typeMode is on
     typePick: null,       // 'planned' | 'blocked' — the type staged for Update
-    slotEdit: false,      // 'Create slots' mode: slicing/resizing on. Off = view only.
+    slotEdit: false,      // 'Edit slots' mode: slicing/resizing on. Off = view only.
                           // While on, ticking rows makes one cut apply to all of them.
     bulkSel: {},          // selected row keys `rday|ycId` -> true
     bulkAt: 12,           // pending cut time for the bulk bar
@@ -834,7 +834,7 @@ const App = {
 
       // left card — the whole header toggles; the arrow is just an affordance
       const sub = closed ? (rd.day==='hol'?'No operating hours':'Closed') : (slots.length+' slot'+(slots.length!==1?'s':''));
-      // In Create slots the card selects the row for a multi-row cut instead of
+      // In Edit slots the card selects the row for a multi-row cut instead of
       // expanding it — the template band is blocked in that mode anyway.
       const rowKey = rd.day+'|'+selYc.id;
       const rowPick = st.slotEdit && !closed;
@@ -2258,7 +2258,7 @@ const App = {
       return rowInner;
   },
 
-  // "Create slots" / "Define slot type" — the two slot modes, used by the
+  // "Edit slots" / "Define slot type" — the two slot modes, used by the
   // merged Template planning header.
   slotModeButtons(){
     const st = this.state;
@@ -2273,7 +2273,7 @@ const App = {
     return [
       btn(st.slotEdit, ()=> this.toggleBulk(), 'Slice and resize slots',
         '<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="6" height="5" rx="1"/><rect x="2.5" y="10" width="6" height="5" rx="1"/><path d="M11.5 5.5h4M11.5 12.5h4"/></svg>',
-        'Create slots'),
+        'Edit slots'),
       btn(st.typeMode, ()=> this.toggleTypeMode(), 'Set slots as Planned or Blocked',
         '<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="13" height="8" rx="1.5"/><path d="M6 5 3 13M11 5 8 13"/></svg>',
         'Define slot type'),
@@ -2486,7 +2486,7 @@ const App = {
       display:'flex', alignItems:'center', gap:'12px', padding:'10px 16px', borderRadius:'12px',
       background:'var(--color-surface)', border:'1px solid var(--color-neutral-700)', boxShadow:'var(--shadow-md)' } },
       h('span',{ style:{ fontSize:'13px', fontWeight:'500', whiteSpace:'nowrap' } },
-        count ? (count+' rows selected') : 'Creating slots'),
+        count ? (count+' rows selected') : 'Editing slots'),
       sep(),
       h('span',{ style:{ fontSize:'13px', color:muted, whiteSpace:'nowrap' } },
         count ? 'Click the timeline to slice all selected · merge removes that boundary on all of them'
