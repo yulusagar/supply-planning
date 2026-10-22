@@ -646,7 +646,6 @@ const App = {
     const topRow = h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', padding:'12px 20px',
       background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
       this.backButton(),
-      this.filtersButton(),
       h('div',{ style:{ display:'flex', alignItems:'center', gap:'10px', marginLeft:'auto' } },
         this.slotModeButtons(),
         h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, pubBtn, pubLbl)));
@@ -663,7 +662,7 @@ const App = {
       h('div',{ class:'tl-ruler', ref:(el)=>{this._rulerEl=el;}, style:{ flex:'1 1 auto', minWidth:'0', overflow:'hidden', margin:'0 10px' } },
         h('div',{ style:{ position:'relative', width:trackW+'px', height:'32px' } }, hourEls)));
     const topBar = h('div',{ style:{ position:'sticky', top:'0', zIndex:'30', background:'var(--color-bg)' } },
-      topRow, this.buildFilterWrap(), rulerRow);
+      topRow, this.buildFilterRow(), rulerRow);
 
     // ---- rows: Mon–Sun + Holiday, one YC, slots positioned by time, empty template inputs ----
     const rowDefs = this.TPL_DAYS.map(([k,l])=>({day:k, label:l}))
@@ -912,7 +911,6 @@ const App = {
         isBiz ? this.labeledCtl('Select centre', headDropdown) : null,
         schedChip ? h('div',{ style:{ display:'flex', alignItems:'center', height:'38px' } }, schedChip) : null,
         h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, publishBtn, publishedLabel),
-        this.filtersButton(),
         twoStage ? this.buildMoreMenu(P) : null
       )
     );
@@ -949,7 +947,7 @@ const App = {
     );
 
     const topBar = h('div',{ style:{ position:'sticky', top:'0', zIndex:'30', background:'var(--color-bg)' } },
-      topRow, this.buildFilterWrap(), rulerRow);
+      topRow, this.buildFilterRow(), rulerRow);
 
     // ---- rows: YCs at one date (yc pivot) OR dates for one YC (weekday pivot) ----
     const statusFill = { past:'var(--color-accent-800)', live:'var(--color-accent)', future:'var(--color-accent-700)' };
@@ -1367,8 +1365,8 @@ const App = {
   },
   buildFilterRow(){
     const st = this.state;
-    const cell = (f)=> this.scDropdown({ title: f.label, label: st.draftFilters[f.id],
-        open: st.filterOpenId===f.id, minWidth:150,
+    const cell = (f, i)=> this.scDropdown({ title: f.label, label: st.draftFilters[f.id],
+        flat:true, edgeLeft: i===0, open: st.filterOpenId===f.id, minWidth:150,
         toggle: ()=> this.setState({ filterOpenId: st.filterOpenId===f.id ? null : f.id }),
         items: f.opts.map(o=>({ label:o, active: st.draftFilters[f.id]===o,
           onClick: ()=>{ this.state.draftFilters = Object.assign({}, this.state.draftFilters, {[f.id]:o});
@@ -1378,16 +1376,18 @@ const App = {
     // something to clear = anything off its default, whether applied or just staged
     const resettable = this.FILTERS.some(f=>
       st.filters[f.id] !== def[f.id] || st.draftFilters[f.id] !== def[f.id]);
-    return h('div',{ style:{ display:'flex', alignItems:'center', gap:'16px', flexWrap:'wrap',
-      padding:'14px 20px', background:'var(--color-neutral-100)',
+    // A band, not a panel: the cells fill it edge to edge, vertically and against each
+    // other. Only the buttons need breathing room, so they carry their own margins.
+    return h('div',{ style:{ display:'flex', alignItems:'stretch', gap:'0',
+      padding:'0 20px', background:'var(--color-neutral-100)',
       borderBottom:'1px solid var(--color-divider)' } },
       this.FILTERS.map(cell),
       // Apply sits with the filters; Reset is held out at the far edge
       h('button',{ class:'btn btn-primary'+(dirty?' btn-solid':''), disabled: !dirty,
-        onClick: ()=> this.applyFilters(), style:{ height:'38px' } }, 'Apply'),
+        onClick: ()=> this.applyFilters(), style:{ height:'38px', alignSelf:'center', marginLeft:'16px' } }, 'Apply'),
       h('button',{ class:'btn btn-primary', disabled: !resettable,
         onClick: ()=> this.resetFilters(),
-        style:{ height:'38px', marginLeft:'auto' } }, 'Reset'));
+        style:{ height:'38px', alignSelf:'center', marginLeft:'auto' } }, 'Reset'));
   },
   activeFilterCount(){
     const st = this.state, def = this.defaultFilters();
@@ -1861,23 +1861,31 @@ const App = {
             color:'var(--color-text-2)' } }, cfg.title),
           h('span',{ style:{ lineHeight:'20px', whiteSpace:'nowrap' } }, cfg.label))
       : h('span',{ style:{ flex:'1', whiteSpace:'nowrap' } }, cfg.label);
-    const trigger = h('div',{ onClick: cfg.toggle, hover:{ borderColor:'var(--color-neutral-600)' },
-      style:{ display:'flex', alignItems:'center', gap:'8px', height: cfg.title ? '48px' : '38px',
+    // flat = a cell in a strip: square, no outline of its own, a hairline on its right
+    // edge only (plus its left edge when it is first), so neighbours butt together.
+    const flat = !!cfg.flat;
+    const trigger = h('div',{ onClick: cfg.toggle,
+      hover: flat ? { background:'color-mix(in srgb, var(--color-text) 4%, var(--color-surface))' }
+                  : { borderColor:'var(--color-neutral-600)' },
+      style: Object.assign({ display:'flex', alignItems:'center', gap:'8px', height: cfg.title ? '48px' : '38px',
         padding:'0 8px 0 12px', minWidth:(cfg.minWidth||160)+'px',
-        background:'var(--color-surface)', border:'1px solid var(--color-divider)', borderRadius:'8px',
-        cursor:'pointer', fontSize:'14px' } },
+        background:'var(--color-surface)', cursor:'pointer', fontSize:'14px' },
+        flat ? { border:'none', borderRight:'1px solid var(--color-divider)', borderRadius:'0',
+                 borderLeft: cfg.edgeLeft ? '1px solid var(--color-divider)' : 'none' }
+             : { border:'1px solid var(--color-divider)', borderRadius:'8px' }) },
       body,
       this.iconEl(cfg.open?'arrowUp':'arrowDown', muted));
     let menu=null;
     if(cfg.open){
       menu = h('div',{},
         h('div',{ onClick: cfg.toggle, style:{ position:'fixed', inset:'0', zIndex:'40' } }),
-        h('div',{ style:{ position:'absolute', top:'calc(100% + 6px)', left:'0', zIndex:'50', minWidth:'100%',
+        h('div',{ style:{ position:'absolute', top: flat ? '100%' : 'calc(100% + 6px)', left:'0', zIndex:'50', minWidth:'100%',
           width:'max-content', maxHeight:'340px', overflow:'auto', background:'var(--color-surface)',
-          border:'1px solid var(--color-neutral-700)', borderRadius:'10px', boxShadow:'var(--shadow-md)', padding:'6px' } },
+          border:'1px solid var(--color-neutral-700)', borderRadius: flat ? '0' : '10px',
+          boxShadow:'var(--shadow-md)', padding: flat ? '0' : '6px' } },
           cfg.items.map(it=> h('div',{ onClick: it.onClick,
             hover:{ background:'color-mix(in srgb, var(--color-text) 6%, transparent)' },
-            style:{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', borderRadius:'6px',
+            style:{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', borderRadius: flat ? '0' : '6px',
               cursor:'pointer', fontSize:'13px', whiteSpace:'nowrap',
               color: it.active? accent : 'var(--color-text)',
               background: it.active? 'color-mix(in srgb, var(--color-accent) 12%, transparent)':'transparent' } },
@@ -1885,7 +1893,7 @@ const App = {
             h('span',{ style:{ marginLeft:'auto', paddingLeft:'12px', fontSize:'12px', color:accent, opacity: it.active?'1':'0' } }, '✓')))
         ));
     }
-    return h('div',{ style:{ position:'relative' } }, trigger, menu);
+    return h('div',{ style:{ position:'relative', display: flat ? 'flex' : 'block' } }, trigger, menu);
   },
 
   // One editable slot row: off-hours, breaks, slot chips, dividers, the cut
