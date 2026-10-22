@@ -1556,12 +1556,12 @@ const App = {
         opacity: active ? '1' : '0' } }, '\u2713'));
 
     const viewing = isBiz ? null : [
-      sectionTitle('Group by', 'groupBy'),
+      sectionTitle('Group', 'groupBy'),
       // Group by names what the HEADER lets you move through: Weekdays puts the
       // date rail up top (rows are the centres for that day); YCs puts the centre
       // picker up top (rows are the days for that centre).
-      option('Weekdays', pivot==='yc',      ()=> this.setState({ [P.pivot]:'yc',      moreOpen:false })),
-      option('YCs',      pivot==='weekday', ()=> this.setState({ [P.pivot]:'weekday', moreOpen:false })),
+      option('YCs by dates', pivot==='yc',      ()=> this.setState({ [P.pivot]:'yc',      moreOpen:false })),
+      option('Dates by YC', pivot==='weekday', ()=> this.setState({ [P.pivot]:'weekday', moreOpen:false })),
       divider(),
     ];
     return h('div',{ style:{ position:'relative' } }, trigger,
