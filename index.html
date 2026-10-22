@@ -23,6 +23,7 @@
   --color-text-3:#919191;      /* content/tertiary */
   --color-divider:#e8e8e8;     /* border/primary */
   --color-accent:#222222;      /* emphasis: primary actions & selected states */
+  --color-active:#5a96ca;      /* active state: armed primary buttons, focused/selected inputs — use sparingly */
   --color-brand:#30cdfd;       /* YuluBlue — sparse brand accent */
   --color-positive:#00654f; --color-caution:#e07912; --color-negative:#c13515;
 
@@ -63,14 +64,14 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 .btn-primary{background:var(--color-neutral-100);color:var(--color-text);border-color:transparent}
 .btn-primary:not(:disabled):hover{background:var(--color-neutral-200)}
 .btn-primary:disabled{background:var(--color-neutral-300);color:var(--color-neutral-400)}
-/* emphasis = outline pill: solid #222 stroke on surface, #222 label.
+/* emphasis = active-blue fill, white label.
    Used by Publish / Update when there are changes to apply. */
-.btn-primary.btn-solid{background:var(--color-surface);color:var(--color-accent);
-  border-color:var(--color-accent)}
+.btn-primary.btn-solid{background:var(--color-active);color:#fff;
+  border-color:var(--color-active)}
 .btn-primary.btn-solid:disabled{background:var(--color-neutral-300);color:var(--color-neutral-400);
   border-color:transparent}
-.btn-primary.btn-solid:not(:disabled):hover{background:color-mix(in srgb,var(--color-accent) 8%,var(--color-surface))}
-.btn-primary.btn-solid:not(:disabled):active{background:color-mix(in srgb,var(--color-accent) 14%,var(--color-surface))}
+.btn-primary.btn-solid:not(:disabled):hover{background:color-mix(in srgb,var(--color-active) 88%,#000)}
+.btn-primary.btn-solid:not(:disabled):active{background:color-mix(in srgb,var(--color-active) 78%,#000)}
 
 /* side-panel toggle */
 .panel-toggle{position:absolute;top:12px;right:20px;z-index:20;width:34px;height:34px;display:flex;
@@ -116,7 +117,8 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
   color:var(--color-text);font-family:var(--font-heading);font-weight:500;font-size:14px;
   white-space:nowrap;cursor:pointer;transition:border-color .15s,color .15s}
 .hdr-btn:not(:disabled):hover{border-color:var(--color-neutral-600)}
-.hdr-btn.armed:not(:disabled){border-color:var(--color-accent)}
+.hdr-btn.armed:not(:disabled){background:var(--color-active);border-color:var(--color-active);color:#fff}
+.hdr-btn.armed:not(:disabled):hover{background:color-mix(in srgb,var(--color-active) 88%,#000);border-color:transparent}
 .hdr-btn:disabled{color:var(--color-neutral-400);cursor:not-allowed}
 /* modal — scrim + centred surface card, same tokens as the rest of the app */
 .modal-scrim{position:fixed;inset:0;z-index:80;background:color-mix(in srgb,var(--color-text) 38%,transparent);
@@ -130,19 +132,19 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 .opt{display:flex;gap:12px;padding:14px;border:1px solid var(--color-divider);border-radius:var(--radius-md);
   cursor:pointer;background:var(--color-surface);text-align:left;width:100%;font-family:var(--font-body)}
 .opt:hover{border-color:var(--color-neutral-400)}
-.opt.on{border-color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 5%,transparent)}
+.opt.on{border-color:var(--color-active);background:color-mix(in srgb,var(--color-active) 8%,transparent)}
 .opt{align-items:center}
 .opt .radio{flex:none;width:18px;height:18px;border-radius:50%;
   border:1.5px solid var(--color-neutral-400);display:flex;align-items:center;justify-content:center}
-.opt.on .radio{border-color:var(--color-accent)}
-.opt.on .radio::after{content:"";width:9px;height:9px;border-radius:50%;background:var(--color-accent)}
+.opt.on .radio{border-color:var(--color-active)}
+.opt.on .radio::after{content:"";width:9px;height:9px;border-radius:50%;background:var(--color-active)}
 .opt .ttl{font-weight:700;font-size:14px;color:var(--color-text)}
 .opt .sub{font-size:12px;color:var(--color-text-2);margin-top:3px;line-height:1.35}
 /* date / time fields */
 .fld{height:38px;padding:0 10px;font-family:var(--font-body);font-size:14px;font-weight:500;
   color:var(--color-text);background:var(--color-neutral-100);border:1px solid transparent;
   border-radius:8px;caret-color:var(--color-accent)}
-.fld:focus-visible{outline:2px solid var(--color-accent);outline-offset:1px}
+.fld:focus-visible{outline:2px solid var(--color-active);outline-offset:1px}
 .fld-lbl{font-size:11px;font-weight:500;color:var(--color-text-2);margin-bottom:5px;display:block}
 /* standing note that a schedule is queued */
 .sched-chip{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 10px;border-radius:var(--radius-pill);
@@ -206,7 +208,7 @@ input.plan{width:100%;height:28px;text-align:center;font-size:14px;font-family:v
   color:var(--color-text);background:var(--color-neutral-100);border:1px solid transparent;
   border-radius:8px;padding:2px;caret-color:var(--color-accent)}
 input.plan:hover{border-color:var(--color-neutral-300)}
-input.plan:focus-visible{outline:2px solid var(--color-accent);outline-offset:1px;border-color:var(--color-accent)}
+input.plan:focus-visible{outline:2px solid var(--color-active);outline-offset:1px;border-color:var(--color-active)}
 /* no number entered yet — the template value shows through as helper text */
 input.plan.is-helper{color:var(--color-neutral-400)}
 input.plan::placeholder{color:var(--color-neutral-400);opacity:1;font-weight:500}
@@ -1515,7 +1517,7 @@ const App = {
 
   // Header overflow: Group by and Bulk Upload. Publish stays on the bar.
   buildMoreMenu(P){
-    const st = this.state, accent = 'var(--color-accent)';
+    const st = this.state, accent = 'var(--color-active)';
     // Icon column: every icon sits at x = 12 and every label at x = 12 + 16 + 10,
     // so the grouped section (icon on the heading, rows indented under it)
     // and the plain actions share one left edge and one text edge.
@@ -1558,7 +1560,7 @@ const App = {
       style:{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 12px 9px '+TEXT_X+'px', borderRadius:'7px',
         fontSize:'14px', whiteSpace:'nowrap', fontFamily:'var(--font-heading)', fontWeight:'500', cursor:'pointer',
         color: active ? accent : 'var(--color-text)',
-        background: active ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent' } },
+        background: active ? 'color-mix(in srgb, var(--color-active) 12%, transparent)' : 'transparent' } },
       h('span',{}, label),
       h('span',{ style:{ marginLeft:'auto', paddingLeft:'16px', fontSize:'12px', color:accent,
         opacity: active ? '1' : '0' } }, '\u2713'));
@@ -1897,7 +1899,7 @@ const App = {
 
   // generic dropdown used for the pivot picker and the YC picker
   scDropdown(cfg){
-    const accent='var(--color-accent)', muted='color-mix(in srgb, var(--color-text) 55%, transparent)';
+    const accent='var(--color-active)', muted='color-mix(in srgb, var(--color-text) 55%, transparent)';
     // With cfg.title the caption lives inside the box, above the value, so the field
     // carries its own label and nothing has to sit outside it.
     const body = cfg.title
@@ -1933,7 +1935,7 @@ const App = {
             style:{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', borderRadius:'6px',
               cursor:'pointer', fontSize:'13px', whiteSpace:'nowrap',
               color: it.active? accent : 'var(--color-text)',
-              background: it.active? 'color-mix(in srgb, var(--color-accent) 12%, transparent)':'transparent' } },
+              background: it.active? 'color-mix(in srgb, var(--color-active) 12%, transparent)':'transparent' } },
             h('span',{}, it.label),
             h('span',{ style:{ marginLeft:'auto', paddingLeft:'12px', fontSize:'12px', color:accent, opacity: it.active?'1':'0' } }, '✓')))
         ));
