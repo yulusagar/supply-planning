@@ -1826,7 +1826,7 @@ const App = {
     return { v:2, savedAt: Date.now(),
       slotEdits: st.slotEdits, edits: st.edits, tEdits: st.tEdits,
       savedVals: st.savedVals, pubVals: st.pubVals, schedule: st.schedule,
-      reduceReasons: st.reduceReasons };
+      reduceReasons: st.reduceReasons, tSeeded: st.tSeeded };
   },
   // debounced so typing in a field doesn't write on every keystroke
   persist(){
@@ -1848,6 +1848,7 @@ const App = {
     if(obj.slotEdits && typeof obj.slotEdits==='object') this.state.slotEdits = obj.slotEdits;
     if(obj.edits    && typeof obj.edits==='object')     this.state.edits    = obj.edits;
     if(obj.tEdits   && typeof obj.tEdits==='object')    this.state.tEdits   = obj.tEdits;
+    if(obj.tSeeded) this.state.tSeeded = true;
     if(obj.savedVals&& typeof obj.savedVals==='object') this.state.savedVals= obj.savedVals;
     if(obj.pubVals  && typeof obj.pubVals==='object')   this.state.pubVals  = obj.pubVals;
     if(obj.schedule && typeof obj.schedule==='object')  this.state.schedule = obj.schedule;
@@ -1857,10 +1858,32 @@ const App = {
     if(!this.state.schedule) this.state.savedVals = {};
     this._restoredAt = obj.savedAt || null;
   },
+  // Demo data: every centre, day, default slot and bike model gets a template number,
+  // except a deterministic ~12% left blank so Day-to-day shows both the helper number and
+  // the empty dash. Runs once; a template the user clears later stays cleared.
+  seedTemplates(){
+    const st = this.state;
+    if(st.tSeeded) return;
+    st.tSeeded = true;
+    if(Object.keys(st.tEdits).length) return;   // the user already has templates
+    const base = { dex2:[30,50], dex3:[20,40], all:[15,30] };
+    let n = 7;
+    const rnd = ()=>{ n = (n*1103515245 + 12345) % 2147483648; return n/2147483648; };
+    this.SLOT_YC.forEach(yc=> this.TPL_DAYS.forEach(([day])=>{
+      if(yc.closed.indexOf(day)!==-1) return;
+      this.segmentsOf(yc).forEach(sg=> this.TPL_MODELS.forEach(([mk])=>{
+        const r1 = rnd(), r2 = rnd();
+        if(r1 < 0.12) return;
+        const [lo,hi] = base[mk];
+        st.tEdits['tpl|'+yc.id+'|'+day+'|'+sg[0]+'|'+mk] = String(lo + Math.floor(r2*(hi-lo+1)));
+      }));
+    }));
+  },
   resetStore(){
     try{ localStorage.removeItem(this.STORE_KEY); }catch(e){}
     try{ window.name = ''; }catch(e){}
-    this.state.slotEdits = {}; this.state.edits = {}; this.state.tEdits = {};
+    this.state.slotEdits = {}; this.state.edits = {}; this.state.tEdits = {}; this.state.tSeeded = false;
+    this.seedTemplates();
     this.state.savedVals = {}; this.state.pubVals = {}; this.state.schedule = null;
     this.state.reduceReasons = {};
     this.state.slotDirty = false; this.state.dirty = false; this.state.tDirty = false;
@@ -2108,7 +2131,7 @@ const App = {
       h('span',{ html:svg }), label);
     return [
       btn(st.slotEdit, ()=> this.toggleBulk(), 'Slice and resize slots',
-        '<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="6" height="5" rx="1"/><rect x="2.5" y="10" width="6" height="5" rx="1"/><path d="M11.5 5.5h4M11.5 12.5h4"/></svg>',
+        '<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.8 4.2l3 3M3 15l.7-3.2L12.1 3.4a1.4 1.4 0 0 1 2 0l.5.5a1.4 1.4 0 0 1 0 2L6.2 14.3 3 15z"/></svg>',
         'Edit slots'),
     ];
   },
@@ -2396,6 +2419,7 @@ const App = {
 };
 
 App.loadSlots();
+App.seedTemplates();
 App.state.day = App.wkToday();   // Slot creation opens on today's weekday, matching day-to-day's "today"
 App.render();
 // flush any debounced write before the tab goes away, so nothing in flight is lost
