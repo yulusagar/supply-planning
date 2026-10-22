@@ -1623,6 +1623,8 @@ const App = {
         borderRadius:'10px', boxShadow:'var(--shadow-md)', padding:'6px' } },
         planningFor,
         viewing,
+        // a way across to the other section without opening the side panel
+        item('Template planning', true, ()=> this.setState({ section:'templates', moreOpen:false })),
         item('Bulk Upload', true, ()=> this.setState({ uploadOpen:true, moreOpen:false }))));
   },
 
