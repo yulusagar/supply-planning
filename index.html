@@ -176,7 +176,6 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 .nav-item:hover{background:color-mix(in srgb, var(--color-text) 5%, transparent)}
 .nav-item.active{border-left-color:var(--color-accent);color:var(--color-accent);
   background:color-mix(in srgb, var(--color-accent) 12%, transparent)}
-.nav-item.soon{opacity:.6}
 .nav-item svg{display:block;flex:none}
 
 /* slot creation */
@@ -407,11 +406,10 @@ const App = {
   // Planning templates) and the holiday wording in the nav. Nothing was deleted.
   SHOW_HOLIDAY: false,
 
-  // the four app sections (day-to-day planning is the one built)
+  // the app sections
   SECTIONS: [
     {id:'templates', label:'Template planning',  sub:'Slots and day-of-week presets',   icon:'templates'},
     {id:'daily',     label:'Day-to-day planning', sub:'Enter numbers for future slots',  icon:'daily'},
-    {id:'captain',   label:'Captain app · Tokens',sub:'Mobile — coming soon',            icon:'captain', soon:true},
   ],
   navIcon(name){
     const s = 'stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"';
@@ -419,7 +417,6 @@ const App = {
       slots:'<rect x="2.5" y="4" width="15" height="12" rx="2" '+s+'/><path d="M10 8v4M8 10h4" '+s+'/>',
       templates:'<rect x="3" y="2.5" width="11" height="14" rx="1.5" '+s+'/><path d="M6.5 6h4M6.5 9h4M6.5 12h2.5" '+s+'/>',
       daily:'<rect x="2.5" y="3.5" width="15" height="13" rx="2" '+s+'/><path d="M2.5 7.5h15M7 3.5v13M12 3.5v13" '+s+'/>',
-      captain:'<rect x="5.5" y="2.5" width="9" height="15" rx="2" '+s+'/><path d="M9 14.5h2" '+s+'/>',
     };
     return '<svg width="18" height="18" viewBox="0 0 20 20">'+(g[name]||'')+'</svg>';
   },
@@ -465,24 +462,10 @@ const App = {
             color:'color-mix(in srgb, var(--color-text) 50%, transparent)', marginBottom:'2px' } }, 'Supply planning'),
           h('div',{ style:{ fontFamily:'var(--font-heading)', fontWeight:'700', fontSize:'17px', lineHeight:'1.1' } }, 'Ops console'))
       ),
-      // Fleet sits here as a segmented pair — city and cluster are filters, but
-      // which fleet you are planning is a mode, not a filter
-      h('div',{ style:{ padding:'12px 14px', borderBottom:'1px solid var(--color-divider)',
-        display:'flex', flexDirection:'column', gap:'6px' } },
-        h('div',{ style:{ fontSize:'11px', fontWeight:'500', color:'var(--color-text-2)' } }, 'Fleet'),
-        // plain block: a flex parent would blockify the segmented control's
-        // inline-grid and its 1fr columns would stop equalising
-        h('div',{}, this.segmented([
-          { label:'Corporate', active: st.view!=='business',
-            onClick: ()=> this.setState({ view:'people' }) },
-          { label:'Business',  active: st.view==='business',
-            onClick: ()=> this.setState({ view:'business' }) },
-        ]))
-      ),
       h('div',{ style:{ padding:'8px 0', flex:'1', overflow:'auto' } },
         this.SECTIONS.map(sec=>{
           const active = sec.id === st.section;
-          return h('div',{ class:'nav-item'+(active?' active':'')+(sec.soon?' soon':''),
+          return h('div',{ class:'nav-item'+(active?' active':''),
             onClick: ()=> this.selectSection(sec.id),
             'aria-current': active ? 'page' : null },
             h('span',{ html: this.navIcon(sec.icon) }),
@@ -493,45 +476,10 @@ const App = {
             )
           );
         })
-      ),
-      // footer: shows that work is being kept on this device, and how to clear it
-      h('div',{ style:{ borderTop:'1px solid var(--color-divider)', padding:'12px 14px',
-        display:'flex', flexDirection:'column', gap:'6px' } },
-        h('div',{ ref:(el)=>{ this._savedTag = el; },
-          style:{ fontSize:'11px', color:'var(--color-text-2)', whiteSpace:'nowrap' } },
-          this.savedLabel()),
-        h('button',{ onClick: ()=>{ if(confirm('Clear all saved slots and planned numbers on this device?')) this.resetStore(); },
-          hover:{ borderColor:'var(--color-neutral-600)' },
-          style:{ alignSelf:'flex-start', height:'28px', padding:'0 10px', fontSize:'11px',
-            fontFamily:'var(--font-heading)', fontWeight:'700', background:'var(--color-surface)',
-            border:'1px solid var(--color-divider)', borderRadius:'var(--radius-pill)',
-            color:'var(--color-text-2)', cursor:'pointer' } }, 'Reset saved data')
       )
     );
     return [backdrop, drawer];
   },
-  placeholder(sec){
-    const muted = 'color-mix(in srgb, var(--color-text) 55%, transparent)';
-    return h('div',{},
-      h('div',{ style:{ display:'flex', alignItems:'center', gap:'14px', padding:'12px 20px',
-        background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)',
-        position:'sticky', top:'0', zIndex:'30' } },
-        this.makeMenuBtn(),
-        h('div',{ style:{ fontFamily:'var(--font-heading)', fontWeight:'500', fontSize:'16px' } }, sec.label)
-      ),
-      h('div',{ style:{ minHeight:'60vh', display:'flex', flexDirection:'column', alignItems:'center',
-        justifyContent:'center', gap:'10px', textAlign:'center', padding:'40px 20px' } },
-        h('div',{ style:{ width:'44px', height:'44px', display:'flex', alignItems:'center', justifyContent:'center',
-          color:'var(--color-accent)', border:'1px solid var(--color-divider)', borderRadius:'12px',
-          background:'var(--color-surface)' }, html: this.navIcon(sec.icon) }),
-        h('div',{ style:{ fontFamily:'var(--font-heading)', fontWeight:'500', fontSize:'20px' } }, sec.label),
-        h('div',{ style:{ fontSize:'14px', color:muted, maxWidth:'340px' } }, sec.sub+' — not built yet.'),
-        h('button',{ class:'btn btn-primary', style:{ marginTop:'6px' },
-          onClick: ()=> this.selectSection('daily') }, 'Go to day-to-day planning')
-      )
-    );
-  },
-
   // ---- data (verbatim from the design) ----
   data(view){
     const m = (key,label,cap,roll,vals)=>({key,label,cap,
@@ -719,17 +667,9 @@ const App = {
 
   // ---- build the whole tree ----
   build(){
-    const st = this.state;
-    // non-daily sections are placeholders for now
-    if(st.section !== 'daily'){
-      // Slot creation merged into Template planning
-      if(st.section === 'slots' || st.section === 'templates') return this.buildTemplates();
-      const sec = this.SECTIONS.find(s=> s.id===st.section) || this.SECTIONS[2];
-      return h('div',{ class:'app-root'+(st.navOpen?' nav-open':''), ref:(el)=>{ this._rootEl = el; },
-        style:{ minHeight:'100vh', background:'var(--color-bg)', color:'var(--color-text)', fontSize:'14px' } },
-        this.buildNav(), this.placeholder(sec));
-    }
-    return this.buildDaily();
+    // Two sections. A stale id (the old 'slots', say) lands on Template planning.
+    if(this.state.section === 'daily') return this.buildDaily();
+    return this.buildTemplates();
   },
 
   DAILY_P: { view:'view',  dateRel:'dateRel',  pivot:'dailyPivot', yc:'dailyYc', expanded:'expanded',  edits:'edits',  published:'published' },
@@ -1639,9 +1579,30 @@ const App = {
     // Business has no pivot, so the viewing block only applies to the rest
     const isBiz = st[P.view] === 'business';
     const pivot = st[P.pivot];
+    const divider = ()=> h('div',{ style:{ height:'1px', background:'var(--color-divider)', margin:'2px 6px 6px' } });
+    const sectionTitle = (t)=> h('div',{ style:{ padding:'6px 12px 2px', fontSize:'11px', fontWeight:'500',
+      color:'var(--color-text-2)' } }, t);
+    // a pick-one list row — the selected one wears the same accent wash and tick
+    // the dropdown menus use, so it reads as "chosen" rather than as a button
+    const option = (label, active, onClick)=> h('div',{ onClick,
+      hover: active ? null : { background:'color-mix(in srgb, var(--color-text) 6%, transparent)' },
+      style:{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 12px', borderRadius:'7px',
+        fontSize:'14px', whiteSpace:'nowrap', fontFamily:'var(--font-heading)', fontWeight:'500', cursor:'pointer',
+        color: active ? accent : 'var(--color-text)',
+        background: active ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent' } },
+      h('span',{}, label),
+      h('span',{ style:{ marginLeft:'auto', paddingLeft:'16px', fontSize:'12px', color:accent,
+        opacity: active ? '1' : '0' } }, '\u2713'));
+
+    // which fleet is being planned — a mode, so it is always offered, in either view
+    const planningFor = [
+      sectionTitle('Planning for'),
+      option('Corporate', !isBiz, ()=> this.setState({ view:'people',   moreOpen:false })),
+      option('Business',   isBiz, ()=> this.setState({ view:'business', moreOpen:false })),
+      divider(),
+    ];
     const viewing = isBiz ? null : [
-      h('div',{ style:{ padding:'6px 12px 2px', fontSize:'11px', fontWeight:'500',
-        color:'var(--color-text-2)' } }, 'Group by'),
+      sectionTitle('Group by'),
       // Group by names what the HEADER lets you move through: Weekdays puts the
       // date rail up top (rows are the centres for that day); YCs puts the centre
       // picker up top (rows are the days for that centre).
@@ -1651,7 +1612,7 @@ const App = {
         { label:'YCs',      active: pivot==='weekday',
           onClick: ()=> this.setState({[P.pivot]:'weekday'}) },
       ])),
-      h('div',{ style:{ height:'1px', background:'var(--color-divider)', margin:'2px 6px 6px' } }),
+      divider(),
     ];
     return h('div',{ style:{ position:'relative' } }, trigger,
       h('div',{ onClick: ()=> this.setState({moreOpen:false}),
@@ -1660,6 +1621,7 @@ const App = {
         width:'max-content', minWidth:'170px', background:'var(--color-surface)',
         border:'1px solid var(--color-neutral-700)',
         borderRadius:'10px', boxShadow:'var(--shadow-md)', padding:'6px' } },
+        planningFor,
         viewing,
         item('Bulk Upload', true, ()=> this.setState({ uploadOpen:true, moreOpen:false }))));
   },
@@ -1914,16 +1876,8 @@ const App = {
   },
   persistNow(){
     this._storeWrite(JSON.stringify(this.snapshot()));
-    if(this._savedTag) this._savedTag.textContent = this.savedLabel();
   },
   persistSlots(){ this.persist(); },   // kept: slot mutations call through here
-  clockLabel(ts){ const d=new Date(ts); return this.pad(d.getHours())+':'+this.pad(d.getMinutes()); },
-  // reads the store itself so the label is always true, whichever backend held the data
-  savedLabel(){
-    let ts = null;
-    try{ const raw = this._storeRead(); if(raw){ const o = JSON.parse(raw); ts = o && o.savedAt; } }catch(e){}
-    return ts ? ('Saved locally · '+this.clockLabel(ts)) : 'Changes are saved on this device';
-  },
   loadSlots(){
     const raw = this._storeRead();
     if(!raw) return;
