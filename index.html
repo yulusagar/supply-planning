@@ -308,7 +308,7 @@ const App = {
     reduceReasons: {},   // key -> { from, to, reason }
     // header filter row
     filtersOpen: false, filterOpenId: null,
-    filters: null, draftFilters: null,   // applied vs. in-progress; seeded on first build
+    filters: null,   // current selections; seeded on first build, and each pick takes effect at once
     uploadOpen: false,   // Bulk upload dialogue — presentational for now
     moreOpen: false,     // header overflow menu (Bulk Upload, Publish)
     edits: {},
@@ -1311,29 +1311,27 @@ const App = {
   },
   ensureFilters(){
     if(!this.state.filters) this.state.filters = this.defaultFilters();
-    if(!this.state.draftFilters) this.state.draftFilters = Object.assign({}, this.state.filters);
   },
-  // Planning for exists only in Day-to-day. Applying or resetting from any other
-  // section must leave it alone, or a fleet staged over there would flip the
-  // Day-to-day view behind the user's back.
+  // Planning for exists only in Day-to-day. Resetting from any other section must
+  // leave it alone, or it would flip the Day-to-day view behind the user's back.
   fleetFilterShown(){ return this.filtersFor().some(f=> f.id==='fleet'); },
-  applyFilters(){
-    const d = Object.assign({}, this.state.draftFilters);
-    const fleetShown = this.fleetFilterShown();
-    if(!fleetShown) d.fleet = this.state.filters.fleet;
-    const next = { filters:d, filterOpenId:null };
+  // Picking an option takes effect immediately; there is no staging step.
+  setFilter(id, value){
+    const patch = { filters: Object.assign({}, this.state.filters, {[id]:value}), filterOpenId:null };
     // Select centre drives whichever section's centre the header used to pick
-    const yc = this.SLOT_YC.find(y=> y.name === d.centre);
-    if(yc){ next.tYc = yc.id; next.slotYc = yc.id; }
-    if(fleetShown) next.view = d.fleet === 'Business' ? 'business' : 'people';
-    this.setState(next);
+    if(id === 'centre'){
+      const yc = this.SLOT_YC.find(y=> y.name === value);
+      if(yc){ patch.tYc = yc.id; patch.slotYc = yc.id; }
+    }
+    if(id === 'fleet') patch.view = value === 'Business' ? 'business' : 'people';
+    this.setState(patch);
   },
   resetFilters(){
     const d = this.defaultFilters();
     const fleetShown = this.fleetFilterShown();
     if(!fleetShown) d.fleet = this.state.filters.fleet;
     const yc = this.SLOT_YC.find(y=> y.name === d.centre) || this.SLOT_YC[0];
-    const next = { filters:d, draftFilters:Object.assign({},d), filterOpenId:null, tYc: yc.id, slotYc: yc.id };
+    const next = { filters:d, filterOpenId:null, tYc: yc.id, slotYc: yc.id };
     if(fleetShown) next.view = 'people';
     this.setState(next);
   },
@@ -1365,26 +1363,21 @@ const App = {
   },
   buildFilterRow(){
     const st = this.state;
-    const cell = (f, i)=> this.scDropdown({ title: f.label, label: st.draftFilters[f.id],
+    const cell = (f, i)=> this.scDropdown({ title: f.label, label: st.filters[f.id],
         flat:true, edgeLeft: i===0, open: st.filterOpenId===f.id, minWidth:150,
         toggle: ()=> this.setState({ filterOpenId: st.filterOpenId===f.id ? null : f.id }),
-        items: f.opts.map(o=>({ label:o, active: st.draftFilters[f.id]===o,
-          onClick: ()=>{ this.state.draftFilters = Object.assign({}, this.state.draftFilters, {[f.id]:o});
-            this.setState({ filterOpenId:null }); } })) });
+        items: f.opts.map(o=>({ label:o, active: st.filters[f.id]===o,
+          onClick: ()=> this.setFilter(f.id, o) })) });
     const def = this.defaultFilters();
-    const dirty = this.FILTERS.some(f=> st.draftFilters[f.id] !== st.filters[f.id]);
-    // something to clear = anything off its default, whether applied or just staged
-    const resettable = this.FILTERS.some(f=>
-      st.filters[f.id] !== def[f.id] || st.draftFilters[f.id] !== def[f.id]);
+    // something to clear = anything off its default
+    const resettable = this.FILTERS.some(f=> st.filters[f.id] !== def[f.id]);
     // A band, not a panel: the cells fill it edge to edge, vertically and against each
     // other. Only the buttons need breathing room, so they carry their own margins.
     return h('div',{ style:{ display:'flex', alignItems:'stretch', gap:'0',
       padding:'0 20px', background:'var(--color-neutral-100)',
       borderBottom:'1px solid var(--color-divider)' } },
       this.FILTERS.map(cell),
-      // Apply sits with the filters; Reset is held out at the far edge
-      h('button',{ class:'btn btn-primary'+(dirty?' btn-solid':''), disabled: !dirty,
-        onClick: ()=> this.applyFilters(), style:{ height:'38px', alignSelf:'center', marginLeft:'16px' } }, 'Apply'),
+      // changes are instant, so the only button left is Reset, held out at the far edge
       h('button',{ class:'btn btn-primary', disabled: !resettable,
         onClick: ()=> this.resetFilters(),
         style:{ height:'38px', alignSelf:'center', marginLeft:'auto' } }, 'Reset'));
