@@ -214,7 +214,7 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 .tl-scroll::-webkit-scrollbar-thumb{background:var(--color-neutral-700);border-radius:6px;border:3px solid var(--color-neutral-900)}
 .tl-scroll::-webkit-scrollbar-thumb:hover{background:var(--color-neutral-600)}
 
-/* editable planned cell — one neutral field; the status dot carries the state */
+/* editable planned cell — one neutral field */
 input.plan{width:100%;height:28px;text-align:center;font-size:14px;font-family:var(--font-body);font-weight:500;
   color:var(--color-text);background:var(--color-neutral-100);border:1px solid transparent;
   border-radius:8px;padding:2px;caret-color:var(--color-accent)}
@@ -223,24 +223,8 @@ input.plan:focus-visible{outline:2px solid var(--color-accent);outline-offset:1p
 /* no number entered yet — the template value shows through as helper text */
 input.plan.is-helper{color:var(--color-neutral-400)}
 input.plan::placeholder{color:var(--color-neutral-400);opacity:1;font-weight:500}
-/* a live number carrying an edit that has not been published yet */
-input.plan.is-pending-pub{border-style:dashed;border-color:var(--color-accent)}
 
-/* status dot — 8px ring at the field's left edge.
-   grey = not published · orange = saved · green = published */
 .plan-cell{position:relative;width:82%;display:flex;align-items:center}
-.plan-dot{position:absolute;left:8px;top:50%;margin-top:-4px;width:8px;height:8px;
-  border-radius:50%;border:1.5px solid;box-sizing:border-box;pointer-events:none}
-.plan-dot.st-none{border-color:var(--color-neutral-400)}
-.plan-dot.st-saved{border-color:var(--color-caution)}
-.plan-dot.st-pub{border-color:var(--color-positive)}
-
-/* day-to-day legend footer */
-.plan-footer{position:fixed;left:0;right:0;bottom:0;z-index:40;height:52px;display:flex;
-  align-items:center;justify-content:center;gap:36px;
-  background:var(--color-neutral-100);border-top:1px solid var(--color-divider)}
-.plan-footer .lg{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--color-text)}
-.plan-footer .lg .plan-dot{position:static;margin:0}
 
 /* live-slot animation */
 @keyframes livePulse{0%,100%{box-shadow:0 0 0 2px color-mix(in srgb,var(--color-brand) 55%,transparent),0 2px 10px color-mix(in srgb,var(--color-brand) 40%,transparent)}50%{box-shadow:0 0 0 3px var(--color-brand),0 3px 15px color-mix(in srgb,var(--color-brand) 65%,transparent)}}
@@ -1015,26 +999,18 @@ const App = {
     const headCenter   = isBiz ? dateRail   : centerSel;  // Business always uses the date rail
 
     // ---- city dropdown ----
-    // ---- save / publish -----------------------------------------------------
-    // Day-to-day is two-stage: Save commits the numbers to the platform, Publish
-    // pushes them upstream and opens the slots to customers. Save is Secondary so
-    // there is still exactly one Primary action on the screen.
+    // ---- publish -----------------------------------------------------------
+    // One commit action: numbers are typed straight into the grid and Publish
+    // makes them live (now, or on a schedule). There is no intermediate Save.
     const twoStage = (P === this.DAILY_P);
     const hasEdits = Object.keys(st[P.edits]).length > 0;
     const tally = twoStage ? this.planTally() : null;
-    const unsaved  = twoStage ? tally.canSave : hasEdits;
     const canPublish = twoStage ? tally.canPublish : hasEdits;
-
-    const saveBtn = twoStage ? h('button',{ class:'btn btn-primary', ref:(el)=>{ this._saveBtn = el; },
-      onClick: ()=> this.savePlanner(P), disabled: !unsaved,
-      title: tally.dirtyPublished
-        ? 'These slots are already live — publish to apply the change'
-        : 'Save these numbers in the platform', style:{ fontSize:'14px' } }, 'Save') : null;
 
     const publishBtn = h('button',{ class:'btn btn-primary'+(canPublish?' btn-solid':''),
       ref:(el)=>{ this._publishBtn = el; },
       onClick: ()=> twoStage ? this.openPublishDialog() : this.publishPlanner(P),
-      disabled: !canPublish, title:'Push the saved numbers upstream and open these slots to customers',
+      disabled: !canPublish, title:'Make these numbers live and open the slots to customers',
       style:{ fontSize:'14px' } }, 'Publish');
 
     // a queued schedule stays visible without opening the dialogue
@@ -1044,14 +1020,10 @@ const App = {
       h('span',{ class:'dot' }),
       h('span',{}, 'Scheduled · '+this.schedLabel(st.schedule))) : null;
 
-    const statusLabel = st[P.published] ? 'Published ✓' : (st.dailySaved ? 'Saved ✓'
-      : (twoStage && tally.dirtyPublished
-          ? (tally.dirtyPublished + (tally.dirtyPublished===1?' live slot edited':' live slots edited') + ' — publish to apply')
-          : ''));
-    const publishedLabel = h('span',{ ref:(el)=>{ this._statusLbl = el; },
+    const publishedLabel = h('span',{
       style:{ position:'absolute', top:'100%', right:'0', marginTop:'4px',
       whiteSpace:'nowrap', fontSize:'12px', color:accent, transition:'opacity .2s',
-      pointerEvents:'none', opacity: statusLabel?'1':'0' } }, statusLabel || 'Published ✓');
+      pointerEvents:'none', opacity: st[P.published]?'1':'0' } }, 'Published ✓');
 
     const topRow = h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', padding:'12px 20px',
       background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
@@ -1061,9 +1033,8 @@ const App = {
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', marginLeft:'auto' } },
         isBiz ? this.labeledCtl('Select centre', headDropdown) : null,
         schedChip ? h('div',{ style:{ display:'flex', alignItems:'center', height:'38px' } }, schedChip) : null,
-        saveBtn,
-        h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } },
-          twoStage ? this.buildMoreMenu(canPublish, P) : publishBtn, publishedLabel)
+        h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, publishBtn, publishedLabel),
+        twoStage ? this.buildMoreMenu(P) : null
       )
     );
 
@@ -1270,23 +1241,13 @@ const App = {
 
             let plannedNode;
             if(editable){
-              const cellState = twoStage ? this.planCellState(key, planned)
-                                         : (planned===''?'empty':'draft');
               const tplVal = twoStage ? this.tplValueFor(yc.id, rel, s[1], mod.key) : '';
-              const inp = h('input',{ class:'plan'+(twoStage?this.planCellClass(cellState):(planned===''?' is-helper':'')),
+              const inp = h('input',{ class:'plan'+(planned===''?' is-helper':''),
                 type:'text', inputmode:'numeric',
                 // the template number sits in the field as helper text until a
                 // value is entered, per the reference
                 placeholder: (twoStage && tplVal!=='') ? tplVal : '—', value: planned });
-              const dot = twoStage
-                ? h('span',{ class:'plan-dot '+this.planDotClass(cellState) })
-                : null;
-              const restyle = (val)=>{
-                if(!twoStage){ inp.classList.toggle('is-helper', val===''); return; }
-                const stNow = this.planCellState(key, val);
-                inp.className = 'plan' + this.planCellClass(stNow);
-                if(dot) dot.className = 'plan-dot ' + this.planDotClass(stNow);
-              };
+              const restyle = (val)=>{ inp.classList.toggle('is-helper', val===''); };
               // the template number is offered as helper text once the field has
               // focus; → accepts it, so a planner can walk the row with one hand
               if(tplVal !== ''){
@@ -1308,9 +1269,7 @@ const App = {
               });
               // leaving the field with a number below the last committed one asks why
               if(twoStage) inp.addEventListener('blur', ()=> this.checkReduction(key, inp.value));
-              plannedNode = dot
-                ? h('div',{ class:'plan-cell' }, dot, inp)
-                : h('div',{ class:'plan-cell' }, inp);
+              plannedNode = h('div',{ class:'plan-cell' }, inp);
             } else {
               plannedNode = h('span',{}, planned);
             }
@@ -1373,57 +1332,27 @@ const App = {
         h('div',{ style:{ height:'16px' } }), panelCards)
     );
 
-    // the legend footer is fixed to the viewport, so the rows need room to clear it
-    const main = h('div',{ style:{ display:'flex', alignItems:'flex-start',
-      padding: twoStage ? '0 16px 92px' : '0 16px 40px' } },
+    const main = h('div',{ style:{ display:'flex', alignItems:'flex-start', padding:'0 16px 40px' } },
       leftRail, middle, panel);
 
     return h('div',{ class:'app-root'+(st.panelOpen?' panel-open':'')+(st.navOpen?' nav-open':''),
       ref:(el)=>{ this._rootEl = el; },
       style:{ minHeight:'100vh', background:'var(--color-bg)', color:'var(--color-text)', fontSize:'14px' } },
-      this.buildNav(), topBar, main, twoStage ? this.buildPlanLegend() : null,
+      this.buildNav(), topBar, main,
       st.reduceOpen ? this.buildReduceDialog()
         : (st.pubOpen ? this.buildPublishDialog(P)
         : (st.uploadOpen ? this.buildUploadDialog() : null)));
-  },
-
-  // Day-to-day only: what the status dot in each planned cell means.
-  buildPlanLegend(){
-    const item = (cls,label)=> h('div',{ class:'lg' },
-      h('span',{ class:'plan-dot '+cls }), h('span',{}, label));
-    return h('div',{ class:'plan-footer' },
-      h('span',{ style:{ fontSize:'14px', color:'var(--color-text)' } }, 'Input field states:'),
-      h('div',{ style:{ display:'flex', alignItems:'center', gap:'36px' } },
-        item('st-none','Not published'),
-        item('st-saved','Saved number'),
-        item('st-pub','Published')));
   },
 
   _refreshPublish(){
     const twoStage = this._activeEdits === 'edits';
     const dirty = Object.keys(this.state[this._activeEdits] || {}).length > 0;
     if(twoStage){
-      // derive both buttons from the same tally the render uses, so typing can
-      // never leave Save armed for a change only Publish is allowed to apply
+      // same tally the render uses, so typing can never leave the button out of step
       const t = this.planTally();
-      this.state.dailyUnsaved = t.dirty > 0;
-      this.state.dailySaved = false;
-      if(this._saveBtn && this._saveBtn.isConnected){
-        this._saveBtn.toggleAttribute('disabled', !t.canSave);
-        this._saveBtn.title = t.dirtyPublished
-          ? 'These slots are already live — publish to apply the change'
-          : 'Save these numbers in the platform';
-      }
       if(this._publishBtn && this._publishBtn.isConnected){
         this._publishBtn.toggleAttribute('disabled', !t.canPublish);
         this._publishBtn.classList.toggle('btn-solid', t.canPublish);
-      }
-      if(this._statusLbl && this._statusLbl.isConnected){
-        const msg = t.dirtyPublished
-          ? (t.dirtyPublished + (t.dirtyPublished===1?' live slot edited':' live slots edited') + ' — publish to apply')
-          : '';
-        this._statusLbl.textContent = msg || 'Published \u2713';
-        this._statusLbl.style.opacity = msg ? '1' : '0';
       }
       return;
     }
@@ -1432,50 +1361,26 @@ const App = {
       this._publishBtn.classList.toggle('btn-solid', dirty);
     }
   },
-  // ---- planned-cell state ------------------------------------------------
-  // A cell's live value is edits[key]; savedVals/pubVals are the snapshots taken
-  // by Save and Publish. Everything else is derived, so the buttons and the field
-  // styling can never disagree about what is pending.
-  planCellState(key, cur){
-    const pub = this.state.pubVals[key], sav = this.state.savedVals[key];
-    if(pub !== undefined) return cur === pub ? 'published' : 'published-dirty';
-    if(cur === '' || cur === undefined) return 'empty';
-    if(sav !== undefined) return cur === sav ? 'saved' : 'draft';
-    return 'draft';
-  },
-  // the field itself only distinguishes "still showing helper text" and "live
-  // number with an unpublished edit" — the dot carries the rest
-  planCellClass(state){
-    return state==='published-dirty' ? ' is-pending-pub'
-         : state==='empty'           ? ' is-helper'
-         : '';
-  },
-  // grey = not published · orange = saved · green = published
-  planDotClass(state){
-    return state==='published' || state==='published-dirty' ? 'st-pub'
-         : state==='saved' ? 'st-saved'
-         : 'st-none';
-  },
-  // one pass over every cell we know about, so Save/Publish reflect the whole grid
+  // ---- what is waiting to go live ------------------------------------------
+  // edits[key]     what the planner has typed
+  // pubVals[key]   what is live
+  // savedVals[key] numbers parked behind a scheduled publish. There is no Save
+  //                step any more, so this only ever holds a schedule's batch.
+  // One pass over every cell we know about, so the Publish button and the
+  // dialogue always agree about what is waiting.
   planTally(){
     const st = this.state, seen = {};
-    let dirty = 0, dirtyPublished = 0, savedUnpublished = 0;
+    let pending = 0, queued = 0;
     [st.edits, st.savedVals, st.pubVals].forEach(m=> Object.keys(m).forEach(k=> seen[k]=1));
     Object.keys(seen).forEach(k=>{
       const pub = st.pubVals[k], sav = st.savedVals[k];
       const cur = st.edits[k] !== undefined ? st.edits[k] : (pub !== undefined ? pub : sav);
       if(cur === undefined) return;
-      const state = this.planCellState(k, cur);
-      if(state==='draft'){ dirty++; }
-      if(state==='published-dirty'){ dirty++; dirtyPublished++; }
-      if(pub === undefined && sav !== undefined && cur === sav) savedUnpublished++;
+      if(pub !== undefined){ if(cur !== pub) pending++; return; }   // live, then changed
+      if(cur === '') return;                                         // nothing entered
+      if(sav !== undefined && cur === sav) queued++; else pending++;
     });
-    return { dirty, dirtyPublished, savedUnpublished,
-      // Save is a draft commit. It cannot express a change to a number that is
-      // already live, so the moment one of those is edited Save steps aside and
-      // Publish becomes the only way to apply the batch.
-      canSave: dirty>0 && dirtyPublished===0,
-      canPublish: dirty>0 || savedUnpublished>0 };
+    return { pending, queued, canPublish: pending>0 || queued>0 };
   },
   // the matching Planning-templates value for a day-to-day cell, or '' if unset
   tplValueFor(ycId, rel, slotStart, modelKey){
@@ -1484,16 +1389,6 @@ const App = {
     return v === undefined ? '' : v;
   },
 
-  // Save = commit the numbers in the platform (kept on this device, still internal)
-  savePlanner(P){
-    // snapshot every pending value that is not already live
-    const st = this.state;
-    Object.keys(st.edits).forEach(k=>{ if(st.pubVals[k] === undefined) st.savedVals[k] = st.edits[k]; });
-    this.persistNow();
-    this.setState({ dailyUnsaved:false, dailySaved:true, dailyUnpublished:true, [P.published]:false });
-    clearTimeout(this._st2);
-    this._st2 = setTimeout(()=> this.setState({ dailySaved:false }), 1800);
-  },
   // ======================================================================
   // Reducing a committed number — the planner has to say why. Baseline is the
   // last committed value (published if there is one, otherwise saved); a first
@@ -1723,8 +1618,8 @@ const App = {
     this._reduceSave.classList.toggle('btn-solid', ok);
   },
 
-  // Header overflow: Bulk Upload and Publish live here; Save stays on the bar.
-  buildMoreMenu(canPublish, P){
+  // Header overflow: Group by and Bulk Upload. Publish stays on the bar.
+  buildMoreMenu(P){
     const st = this.state, accent = 'var(--color-accent)';
     const item = (label, enabled, onClick)=> h('div',{
       onClick: enabled ? onClick : null,
@@ -1734,8 +1629,6 @@ const App = {
         cursor: enabled ? 'pointer' : 'not-allowed',
         color: enabled ? 'var(--color-text)' : 'var(--color-neutral-400)' } }, label);
 
-    // deliberately NOT wired to _publishBtn: that ref gets disabled when there is
-    // nothing to publish, and Bulk Upload has to stay reachable regardless
     const trigger = h('button',{ class:'menu-btn'+(st.moreOpen?' active':''),
       title:'More actions', 'aria-label':'More actions', 'aria-expanded': String(st.moreOpen),
       onClick: ()=> this.setState({ moreOpen: !st.moreOpen }),
@@ -1768,8 +1661,7 @@ const App = {
         border:'1px solid var(--color-neutral-700)',
         borderRadius:'10px', boxShadow:'var(--shadow-md)', padding:'6px' } },
         viewing,
-        item('Bulk Upload', true, ()=> this.setState({ uploadOpen:true, moreOpen:false })),
-        item('Publish', canPublish, ()=>{ this.setState({moreOpen:false}); this.openPublishDialog(); })));
+        item('Bulk Upload', true, ()=> this.setState({ uploadOpen:true, moreOpen:false }))));
   },
 
   // Bulk upload — presentational only for now: it shows the flow and the file
@@ -1825,7 +1717,7 @@ const App = {
   },
   // everything committed but not yet live IS the queue — counting it directly
   // means a second addition can never double-count the first one's values
-  schedCount(){ return this.planTally().savedUnpublished; },
+  schedCount(){ return this.planTally().queued; },
 
   openPublishDialog(){
     const sc = this.state.schedule;
@@ -1839,7 +1731,7 @@ const App = {
   closePublishDialog(){ this.setState({ pubOpen:false }); },
 
   // how many pending values this submission covers
-  pendingCount(){ const t = this.planTally(); return t.dirty + t.savedUnpublished; },
+  pendingCount(){ const t = this.planTally(); return t.pending + t.queued; },
 
   confirmPublishNow(P){
     // publishing now supersedes anything queued
@@ -1850,7 +1742,7 @@ const App = {
   confirmSchedule(){
     const st = this.state, n = this.pendingCount();
     if(!st.pubDate || !st.pubTime) return;
-    // pending numbers are committed like a Save — they are not live yet
+    // park the batch behind the schedule — it is not live until the time comes
     Object.keys(st.edits).forEach(k=>{ if(st.pubVals[k] === undefined) st.savedVals[k] = st.edits[k]; });
     const prev = st.schedule;
     st.schedule = {
@@ -1859,7 +1751,7 @@ const App = {
       adds: (prev ? prev.adds : []).concat(n>0 ? [Date.now()] : [])
     };
     this.persistNow();
-    this.setState({ pubOpen:false, dailyUnsaved:false, dailySaved:false });
+    this.setState({ pubOpen:false });
   },
   cancelSchedule(){
     this.state.schedule = null;
@@ -1924,12 +1816,14 @@ const App = {
   // Publish = push the saved numbers upstream, opening these slots to customers
   publishPlanner(P){
     if(P === this.DAILY_P){
-      // publishing makes every pending value live, and a live value is also saved
+      // publishing makes every typed value live, along with anything parked
+      // behind a schedule, and empties that parked batch
       const st = this.state;
-      Object.keys(st.edits).forEach(k=>{ st.pubVals[k] = st.edits[k]; st.savedVals[k] = st.edits[k]; });
+      Object.keys(st.edits).forEach(k=>{ st.pubVals[k] = st.edits[k]; });
       Object.keys(st.savedVals).forEach(k=>{ if(st.pubVals[k] === undefined) st.pubVals[k] = st.savedVals[k]; });
+      st.savedVals = {};
       this.persistNow();
-      this.setState({ dailyUnpublished:false, dailyUnsaved:false, dailySaved:false, [P.published]:true });
+      this.setState({ [P.published]:true });
     } else {
       this.setState({ [P.edits]: {}, [P.published]: true });
     }
@@ -2011,8 +1905,7 @@ const App = {
     return { v:2, savedAt: Date.now(),
       slotEdits: st.slotEdits, edits: st.edits, tEdits: st.tEdits,
       savedVals: st.savedVals, pubVals: st.pubVals, schedule: st.schedule,
-      reduceReasons: st.reduceReasons,
-      dailyUnpublished: !!st.dailyUnpublished };
+      reduceReasons: st.reduceReasons };
   },
   // debounced so typing in a field doesn't write on every keystroke
   persist(){
@@ -2046,7 +1939,9 @@ const App = {
     if(obj.pubVals  && typeof obj.pubVals==='object')   this.state.pubVals  = obj.pubVals;
     if(obj.schedule && typeof obj.schedule==='object')  this.state.schedule = obj.schedule;
     if(obj.reduceReasons && typeof obj.reduceReasons==='object') this.state.reduceReasons = obj.reduceReasons;
-    this.state.dailyUnpublished = !!obj.dailyUnpublished;
+    // numbers saved under the old Save step have no schedule to belong to, and
+    // they are still in `edits`, so they simply read as waiting to publish
+    if(!this.state.schedule) this.state.savedVals = {};
     this._restoredAt = obj.savedAt || null;
   },
   resetStore(){
