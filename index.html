@@ -1285,11 +1285,14 @@ const App = {
     cluster: { id:'cluster', label:'Cluster',       opts:['ALL','Cluster 1','Cluster 2','Cluster 3'] },
     centre:  { id:'centre',  label:'Select centre', opts:null },   // filled from SLOT_YC
     cat:     { id:'cat',     label:'Bike Category', opts:['ALL','Dex NV','Dex GR','Miracle'] },
+    // Placeholder: the groups are not defined yet, so ALL is the only option and
+    // nothing reads it. It counts toward neither the badge nor Apply.
+    billing: { id:'billing', label:'Bike Billing Group', opts:['ALL'] },
   },
   // Slot creation plans one centre at a time and has no bike split, so it drops
   // Bike Category; day-to-day picks its centre elsewhere, so it drops Select centre.
   SECTION_FILTERS: {
-    daily:     ['fleet','city','cluster','cat'],
+    daily:     ['fleet','city','cluster','cat','billing'],
     templates: ['city','cluster','centre','cat'],
   },
   filtersFor(section){
