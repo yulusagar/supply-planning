@@ -1367,19 +1367,18 @@ const App = {
   },
   buildFilterRow(){
     const st = this.state;
-    const cell = (f)=> h('div',{ style:{ display:'flex', flexDirection:'column', gap:'5px', minWidth:'0' } },
-      h('span',{ style:{ fontSize:'11px', fontWeight:'500', color:'var(--color-text-2)' } }, f.label),
-      this.scDropdown({ label: st.draftFilters[f.id], open: st.filterOpenId===f.id, minWidth:150,
+    const cell = (f)=> this.scDropdown({ title: f.label, label: st.draftFilters[f.id],
+        open: st.filterOpenId===f.id, minWidth:150,
         toggle: ()=> this.setState({ filterOpenId: st.filterOpenId===f.id ? null : f.id }),
         items: f.opts.map(o=>({ label:o, active: st.draftFilters[f.id]===o,
           onClick: ()=>{ this.state.draftFilters = Object.assign({}, this.state.draftFilters, {[f.id]:o});
-            this.setState({ filterOpenId:null }); } })) }));
+            this.setState({ filterOpenId:null }); } })) });
     const def = this.defaultFilters();
     const dirty = this.FILTERS.some(f=> st.draftFilters[f.id] !== st.filters[f.id]);
     // something to clear = anything off its default, whether applied or just staged
     const resettable = this.FILTERS.some(f=>
       st.filters[f.id] !== def[f.id] || st.draftFilters[f.id] !== def[f.id]);
-    return h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', flexWrap:'wrap',
+    return h('div',{ style:{ display:'flex', alignItems:'center', gap:'16px', flexWrap:'wrap',
       padding:'14px 20px', background:'var(--color-neutral-100)',
       borderBottom:'1px solid var(--color-divider)' } },
       this.FILTERS.map(cell),
@@ -1854,11 +1853,20 @@ const App = {
   // generic dropdown used for the pivot picker and the YC picker
   scDropdown(cfg){
     const accent='var(--color-accent)', muted='color-mix(in srgb, var(--color-text) 55%, transparent)';
+    // With cfg.title the caption lives inside the box, above the value, so the field
+    // carries its own label and nothing has to sit outside it.
+    const body = cfg.title
+      ? h('span',{ style:{ flex:'1', minWidth:'0', display:'flex', flexDirection:'column', gap:'1px' } },
+          h('span',{ style:{ fontSize:'11px', fontWeight:'500', lineHeight:'14px', whiteSpace:'nowrap',
+            color:'var(--color-text-2)' } }, cfg.title),
+          h('span',{ style:{ lineHeight:'20px', whiteSpace:'nowrap' } }, cfg.label))
+      : h('span',{ style:{ flex:'1', whiteSpace:'nowrap' } }, cfg.label);
     const trigger = h('div',{ onClick: cfg.toggle, hover:{ borderColor:'var(--color-neutral-600)' },
-      style:{ display:'flex', alignItems:'center', gap:'8px', height:'38px', padding:'0 8px 0 12px', minWidth:(cfg.minWidth||160)+'px',
+      style:{ display:'flex', alignItems:'center', gap:'8px', height: cfg.title ? '48px' : '38px',
+        padding:'0 8px 0 12px', minWidth:(cfg.minWidth||160)+'px',
         background:'var(--color-surface)', border:'1px solid var(--color-divider)', borderRadius:'8px',
         cursor:'pointer', fontSize:'14px' } },
-      h('span',{ style:{ flex:'1', whiteSpace:'nowrap' } }, cfg.label),
+      body,
       this.iconEl(cfg.open?'arrowUp':'arrowDown', muted));
     let menu=null;
     if(cfg.open){
