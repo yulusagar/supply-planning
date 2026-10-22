@@ -1480,13 +1480,27 @@ const App = {
   // Header overflow: Group by and Bulk Upload. Publish stays on the bar.
   buildMoreMenu(P){
     const st = this.state, accent = 'var(--color-accent)';
-    const item = (label, enabled, onClick)=> h('div',{
+    // Icon column: every icon sits at x = 12 and every label at x = 12 + 16 + 10,
+    // so the two grouped sections (icon on the heading, rows indented under it)
+    // and the two plain actions share one left edge and one text edge.
+    const ICON_W = 16, ICON_GAP = 10, TEXT_X = 12 + ICON_W + ICON_GAP;
+    const glyphs = {
+      fleet:    '<circle cx="9" cy="6.3" r="2.7"/><path d="M3.4 15.2c.6-2.8 2.7-4.2 5.6-4.2s5 1.4 5.6 4.2"/>',
+      groupBy:  '<rect x="2.5" y="3" width="13" height="4.6" rx="1.2"/><rect x="2.5" y="10.4" width="13" height="4.6" rx="1.2"/>',
+      template: '<rect x="3.5" y="2" width="11" height="14" rx="1.5"/><path d="M6.5 6h5M6.5 9h5M6.5 12h3"/>',
+      upload:   '<path d="M9 11.5V3.4"/><path d="M5.8 6.4 9 3.2l3.2 3.2"/><path d="M3 11.5v2.3c0 .8.6 1.4 1.4 1.4h9.2c.8 0 1.4-.6 1.4-1.4v-2.3"/>',
+    };
+    const icon = (name)=> h('span',{ style:{ width:ICON_W+'px', height:ICON_W+'px', flex:'none', display:'inline-flex' },
+      html:'<svg width="'+ICON_W+'" height="'+ICON_W+'" viewBox="0 0 18 18" fill="none" stroke="currentColor" '
+        +'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+glyphs[name]+'</svg>' });
+    const item = (label, enabled, onClick, ico)=> h('div',{
       onClick: enabled ? onClick : null,
       hover: enabled ? { background:'color-mix(in srgb, var(--color-text) 6%, transparent)' } : null,
-      style:{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 12px', borderRadius:'7px',
+      style:{ display:'flex', alignItems:'center', gap:ICON_GAP+'px', padding:'9px 12px', borderRadius:'7px',
         fontSize:'14px', whiteSpace:'nowrap', fontFamily:'var(--font-heading)', fontWeight:'500',
         cursor: enabled ? 'pointer' : 'not-allowed',
-        color: enabled ? 'var(--color-text)' : 'var(--color-neutral-400)' } }, label);
+        color: enabled ? 'var(--color-text)' : 'var(--color-neutral-400)' } },
+      ico ? icon(ico) : null, label);
 
     const trigger = h('button',{ class:'menu-btn'+(st.moreOpen?' active':''),
       title:'More actions', 'aria-label':'More actions', 'aria-expanded': String(st.moreOpen),
@@ -1499,13 +1513,14 @@ const App = {
     const isBiz = st[P.view] === 'business';
     const pivot = st[P.pivot];
     const divider = ()=> h('div',{ style:{ height:'1px', background:'var(--color-divider)', margin:'2px 6px 6px' } });
-    const sectionTitle = (t)=> h('div',{ style:{ padding:'6px 12px 2px', fontSize:'11px', fontWeight:'500',
-      color:'var(--color-text-2)' } }, t);
+    const sectionTitle = (t, ico)=> h('div',{ style:{ display:'flex', alignItems:'center', gap:ICON_GAP+'px',
+      padding:'8px 12px 4px', fontSize:'11px', fontWeight:'500', color:'var(--color-text-2)' } },
+      icon(ico), t);
     // a pick-one list row — the selected one wears the same accent wash and tick
     // the dropdown menus use, so it reads as "chosen" rather than as a button
     const option = (label, active, onClick)=> h('div',{ onClick,
       hover: active ? null : { background:'color-mix(in srgb, var(--color-text) 6%, transparent)' },
-      style:{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 12px', borderRadius:'7px',
+      style:{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 12px 9px '+TEXT_X+'px', borderRadius:'7px',
         fontSize:'14px', whiteSpace:'nowrap', fontFamily:'var(--font-heading)', fontWeight:'500', cursor:'pointer',
         color: active ? accent : 'var(--color-text)',
         background: active ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent' } },
@@ -1515,13 +1530,13 @@ const App = {
 
     // which fleet is being planned — a mode, so it is always offered, in either view
     const planningFor = [
-      sectionTitle('Planning for'),
+      sectionTitle('Planning for', 'fleet'),
       option('Corporate', !isBiz, ()=> this.setState({ view:'people',   moreOpen:false })),
       option('Business',   isBiz, ()=> this.setState({ view:'business', moreOpen:false })),
       divider(),
     ];
     const viewing = isBiz ? null : [
-      sectionTitle('Group by'),
+      sectionTitle('Group by', 'groupBy'),
       // Group by names what the HEADER lets you move through: Weekdays puts the
       // date rail up top (rows are the centres for that day); YCs puts the centre
       // picker up top (rows are the days for that centre).
@@ -1539,8 +1554,8 @@ const App = {
         planningFor,
         viewing,
         // a way across to the other section without opening the side panel
-        item('Template planning', true, ()=> this.selectSection('templates', { moreOpen:false })),
-        item('Bulk Upload', true, ()=> this.setState({ uploadOpen:true, moreOpen:false }))));
+        item('Template planning', true, ()=> this.selectSection('templates', { moreOpen:false }), 'template'),
+        item('Bulk Upload', true, ()=> this.setState({ uploadOpen:true, moreOpen:false }), 'upload')));
   },
 
   // Bulk upload — presentational only for now: it shows the flow and the file
