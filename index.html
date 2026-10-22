@@ -100,7 +100,7 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 
 /* section nav — menu button + left drawer with vertical tabs */
 .menu-btn{width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;
-  background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-md);
+  background:var(--color-surface);border:1px solid var(--color-divider);border-radius:8px;
   color:var(--color-text);cursor:pointer;transition:border-color .15s,color .15s,background .15s}
 .menu-btn:hover{border-color:var(--color-neutral-600)}
 .menu-btn.active{border-color:var(--color-accent);color:var(--color-accent);
@@ -109,6 +109,15 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 /* Icon component: fixed 24dp bounding box, artwork centred, colour inherited */
 .ds-icon{width:24px;height:24px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:inherit}
 .ds-icon svg{display:block}
+/* header action button — white, hairline border, 8px radius: the Filters / ⋮ look.
+   Armed (something to do) takes the solid stroke; disabled goes quiet. */
+.hdr-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 14px;
+  border-radius:8px;border:1px solid var(--color-divider);background:var(--color-surface);
+  color:var(--color-text);font-family:var(--font-heading);font-weight:500;font-size:14px;
+  white-space:nowrap;cursor:pointer;transition:border-color .15s,color .15s}
+.hdr-btn:not(:disabled):hover{border-color:var(--color-neutral-600)}
+.hdr-btn.armed:not(:disabled){border-color:var(--color-accent)}
+.hdr-btn:disabled{color:var(--color-neutral-400);cursor:not-allowed}
 /* modal — scrim + centred surface card, same tokens as the rest of the app */
 .modal-scrim{position:fixed;inset:0;z-index:80;background:color-mix(in srgb,var(--color-text) 38%,transparent);
   display:flex;align-items:center;justify-content:center;padding:24px}
@@ -875,11 +884,10 @@ const App = {
     const tally = twoStage ? this.planTally() : null;
     const canPublish = twoStage ? tally.canPublish : hasEdits;
 
-    const publishBtn = h('button',{ class:'btn btn-primary'+(canPublish?' btn-solid':''),
+    const publishBtn = h('button',{ class:'hdr-btn'+(canPublish?' armed':''),
       ref:(el)=>{ this._publishBtn = el; },
       onClick: ()=> twoStage ? this.openPublishDialog() : this.publishPlanner(P),
-      disabled: !canPublish, title:'Make these numbers live and open the slots to customers',
-      style:{ fontSize:'14px' } }, 'Publish');
+      disabled: !canPublish, title:'Make these numbers live and open the slots to customers' }, 'Publish');
 
     // a queued schedule stays visible without opening the dialogue
     const schedChip = (twoStage && st.schedule) ? h('button',{ onClick: ()=> this.openPublishDialog(),
@@ -893,14 +901,18 @@ const App = {
       whiteSpace:'nowrap', fontSize:'12px', color:accent, transition:'opacity .2s',
       pointerEvents:'none', opacity: st[P.published]?'1':'0' } }, 'Published ✓');
 
-    const topRow = h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', padding:'12px 20px',
+    // Three zones on a 1fr | auto | 1fr grid, so the middle one is centred on the
+    // page itself, not on whatever width the two sides happen to leave over.
+    const topRow = h('div',{ style:{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'end',
+      columnGap:'16px', padding:'12px 20px',
       background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
-      this.filtersButton(),
+      this.productTitle(),
       headCenter,
-      h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', marginLeft:'auto' } },
+      h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', justifySelf:'end' } },
         isBiz ? this.labeledCtl('Select centre', headDropdown) : null,
         schedChip ? h('div',{ style:{ display:'flex', alignItems:'center', height:'38px' } }, schedChip) : null,
         h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, publishBtn, publishedLabel),
+        this.filtersButton(),
         twoStage ? this.buildMoreMenu(P) : null
       )
     );
@@ -1219,7 +1231,7 @@ const App = {
       const t = this.planTally();
       if(this._publishBtn && this._publishBtn.isConnected){
         this._publishBtn.toggleAttribute('disabled', !t.canPublish);
-        this._publishBtn.classList.toggle('btn-solid', t.canPublish);
+        this._publishBtn.classList.toggle('armed', t.canPublish);
       }
       return;
     }
@@ -1366,6 +1378,11 @@ const App = {
   activeFilterCount(){
     const st = this.state, def = this.defaultFilters();
     return this.FILTERS.filter(f=> st.filters[f.id] !== def[f.id]).length;
+  },
+  // the product name, set in the heading face and sized to sit on the 38px control row
+  productTitle(){
+    return h('div',{ style:{ height:'38px', display:'flex', alignItems:'center', whiteSpace:'nowrap',
+      fontFamily:'var(--font-heading)', fontWeight:'700', fontSize:'17px', lineHeight:'1.1' } }, 'Supply planning');
   },
   filtersButton(){
     const on = this.state.filtersOpen, n = this.activeFilterCount();
