@@ -832,8 +832,8 @@ const App = {
         hover: { background:'color-mix(in srgb, var(--color-text) 7%, transparent)' },
         style:{ display:'flex', alignItems:'center', height:'38px', padding:'0 18px', fontSize:'14px', cursor:'pointer', userSelect:'none',
           fontWeight: active?'500':'500',
-          background: active? 'color-mix(in srgb, var(--color-accent) 16%, transparent)':'transparent',
-          color: active? accent : 'var(--color-text)',
+          background: active? 'color-mix(in srgb, var(--color-active) 16%, transparent)':'transparent',
+          color:'var(--color-text)',
           borderRight: id==='people' ? '1px solid var(--color-divider)':'none' } }, label);
     };
     const tabs = h('div', { style:{ display:'inline-flex', border:'1px solid var(--color-divider)',
@@ -853,11 +853,11 @@ const App = {
           hover: { borderColor:'var(--color-neutral-600)' },
           style:{ display:'flex', flexDirection:'column', alignItems:'center', gap:'1px',
             minWidth:'46px', height:'38px', justifyContent:'center', padding:'0 8px', borderRadius:'8px', cursor:'pointer',
-            border:'1px solid '+(sel? accent : 'transparent'),
-            background: sel? 'color-mix(in srgb, var(--color-accent) 14%, transparent)':'transparent',
+            border:'1px solid '+(sel? 'var(--color-active)' : 'transparent'),
+            background: sel? 'color-mix(in srgb, var(--color-active) 14%, transparent)':'transparent',
             opacity: past? '.82' : '1' } },
           h('div',{style:{ fontSize:'10px', letterSpacing:'.04em', textTransform:'uppercase', color: muted }}, x.dow),
-          h('div',{style:{ fontSize:'15px', fontWeight: sel?'500':'500', color: sel? accent : 'var(--color-text)' }}, String(x.d)),
+          h('div',{style:{ fontSize:'15px', fontWeight: sel?'500':'500', color:'var(--color-text)' }}, String(x.d)),
           h('div',{style:{ width:'4px', height:'4px', borderRadius:'50%', marginTop:'1px',
             background: today? accent : 'transparent' }})
         );
