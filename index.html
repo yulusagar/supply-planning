@@ -639,14 +639,19 @@ const App = {
     const ycDd = this.scDropdown({ label: selYc.name, open: st.ycOpen, minWidth:200,
       toggle: ()=> this.setState(ss=>({ ycOpen:!ss.ycOpen, cityOpen:false })),
       items: this.SLOT_YC.map(y=>({ label:y.name, active:y.id===selYc.id, onClick: ()=> this.setState({tYc:y.id, ycOpen:false}) })) });
-    const pubBtn = h('button',{ class:'btn btn-primary'+(st.tDirty?' btn-solid':''), disabled: !st.tDirty,
-      onClick: ()=> this.publishTemplate(), style:{ fontSize:'14px' } }, 'Update templates');
+    const pubBtn = h('button',{ class:'hdr-btn'+(st.tDirty?' armed':''), disabled: !st.tDirty,
+      onClick: ()=> this.publishTemplate() }, 'Update templates');
     const pubLbl = h('span',{ style:{ position:'absolute', top:'100%', right:'0', marginTop:'4px',
       whiteSpace:'nowrap', fontSize:'12px', color:accent, pointerEvents:'none', opacity: st.tPublished?'1':'0' } }, 'Templates updated ✓');
-    const topRow = h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', padding:'12px 20px',
-      background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
-      this.backButton(),
-      h('div',{ style:{ display:'flex', alignItems:'center', gap:'10px', marginLeft:'auto' } },
+    // same three-zone header as Day-to-day: title left, (nothing) centre, actions right
+    const topRow = h('div',{ style:{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'end', columnGap:'16px',
+      padding:'12px 20px', background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
+      h('div',{ style:{ display:'flex', alignItems:'center', gap:'12px' } },
+        this.backButton(),
+        h('div',{ style:{ height:'38px', display:'flex', alignItems:'center', whiteSpace:'nowrap',
+          fontFamily:'var(--font-heading)', fontWeight:'700', fontSize:'17px', lineHeight:'1.1' } }, 'Template planning')),
+      h('div',{}),
+      h('div',{ style:{ display:'flex', alignItems:'center', gap:'10px', justifySelf:'end' } },
         this.slotModeButtons(),
         h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, pubBtn, pubLbl)));
 
