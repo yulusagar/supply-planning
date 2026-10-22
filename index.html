@@ -893,10 +893,14 @@ const App = {
     const tally = twoStage ? this.planTally() : null;
     const canPublish = twoStage ? tally.canPublish : hasEdits;
 
+    // Day-to-day shows the button only while something is waiting, and says how much
+    const publishLabel = ()=>{ const n = this.pendingCount(); return 'Update '+n+' slot value'+(n===1?'':'s'); };
     const publishBtn = h('button',{ class:'hdr-btn'+(canPublish?' armed':''),
       ref:(el)=>{ this._publishBtn = el; },
       onClick: ()=> twoStage ? this.openPublishDialog() : this.publishPlanner(P),
-      disabled: !canPublish, title:'Make these numbers live and open the slots to customers' }, 'Publish');
+      style: (twoStage && !canPublish) ? { display:'none' } : null,
+      disabled: !canPublish, title:'Make these numbers live and open the slots to customers' },
+      twoStage ? publishLabel() : 'Publish');
 
     // a queued schedule stays visible without opening the dialogue
     const schedChip = (twoStage && st.schedule) ? h('button',{ onClick: ()=> this.openPublishDialog(),
@@ -1244,8 +1248,11 @@ const App = {
       // same tally the render uses, so typing can never leave the button out of step
       const t = this.planTally();
       if(this._publishBtn && this._publishBtn.isConnected){
+        const n = t.pending + t.queued;
         this._publishBtn.toggleAttribute('disabled', !t.canPublish);
         this._publishBtn.classList.toggle('armed', t.canPublish);
+        this._publishBtn.style.display = t.canPublish ? '' : 'none';
+        this._publishBtn.textContent = 'Update '+n+' slot value'+(n===1?'':'s');
       }
       return;
     }
