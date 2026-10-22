@@ -863,9 +863,7 @@ const App = {
       ]});
     const centerSel = pivot==='yc'
       ? dateRail
-      : h('div',{ style:{ margin:'0 auto' } }, this.scDropdown({ label: selYc.name, open: st.ycOpen, minWidth:200,
-          toggle: ()=> this.setState(ss=>({ ycOpen:!ss.ycOpen, pivotOpen:false, cityOpen:false })),
-          items: raw.map(y=>({ label:y.name, active:y.id===selYc.id, onClick:()=>this.setState({[P.yc]:y.id, ycOpen:false}) })) }));
+      : h('div',{});   // the YC now lives in the filter strip
 
     // ---- Business: dropdown picks the YC; rows become the companies planned there ----
     const bizYcPicker = this.scDropdown({ label: bizYc.name, open: st.ycOpen, minWidth:200,
@@ -1280,7 +1278,7 @@ const App = {
     // which fleet is being planned; Apply switches the Day-to-day view to match
     fleet:   { id:'fleet',   label:'Planning for',  opts:['Corporate','Business'] },
     city:    { id:'city',    label:'City',          opts:['Bangalore','Delhi NCR','Mumbai','Pune'] },
-    cluster: { id:'cluster', label:'Cluster',       opts:['ALL','Cluster 1','Cluster 2','Cluster 3'] },
+    cluster: { id:'cluster', label:'Cluster',       opts:['Cluster 1','Cluster 2','Cluster 3','ALL'] },
     centre:  { id:'centre',  label:'Select centre', opts:null },   // filled from SLOT_YC
     cat:     { id:'cat',     label:'Bike Category', opts:['ALL','Dex NV','Dex GR','Miracle'] },
     // Placeholder: the groups are not defined yet, so ALL is the only option and
@@ -1314,6 +1312,12 @@ const App = {
   },
   // Planning for exists only in Day-to-day. Resetting from any other section must
   // leave it alone, or it would flip the Day-to-day view behind the user's back.
+  // Group by YCs (pivot 'weekday') plans one centre at a time, so Day-to-day gains a YC
+  // filter after Cluster. It drives dailyYc directly; the header no longer carries a picker.
+  ycFilterShown(){
+    const st = this.state;
+    return st.section !== 'templates' && st.dailyPivot === 'weekday' && st[this.DAILY_P.view] !== 'business';
+  },
   fleetFilterShown(){ return this.filtersFor().some(f=> f.id==='fleet'); },
   // Picking an option takes effect immediately; there is no staging step.
   setFilter(id, value){
@@ -1332,6 +1336,7 @@ const App = {
     if(!fleetShown) d.fleet = this.state.filters.fleet;
     const yc = this.SLOT_YC.find(y=> y.name === d.centre) || this.SLOT_YC[0];
     const next = { filters:d, filterOpenId:null, tYc: yc.id, slotYc: yc.id };
+    if(this.ycFilterShown()) next.dailyYc = null;
     if(fleetShown) next.view = 'people';
     this.setState(next);
   },
@@ -1364,19 +1369,35 @@ const App = {
   buildFilterRow(){
     const st = this.state;
     const cell = (f, i)=> this.scDropdown({ title: f.label, label: st.filters[f.id],
-        flat:true, edgeLeft: i===0, open: st.filterOpenId===f.id, minWidth:150,
+        flat:true, edgeLeft:i===0, open: st.filterOpenId===f.id, minWidth:150,
         toggle: ()=> this.setState({ filterOpenId: st.filterOpenId===f.id ? null : f.id }),
         items: f.opts.map(o=>({ label:o, active: st.filters[f.id]===o,
           onClick: ()=> this.setFilter(f.id, o) })) });
     const def = this.defaultFilters();
     // something to clear = anything off its default
-    const resettable = this.FILTERS.some(f=> st.filters[f.id] !== def[f.id]);
+    let resettable = this.FILTERS.some(f=> st.filters[f.id] !== def[f.id]);
+    const cells = this.FILTERS.map(cell);
+    if(this.ycFilterShown()){
+      const raw = this.data(st[this.DAILY_P.view]);
+      const sel = raw.find(y=> y.id===st[this.DAILY_P.yc]) || raw[0];
+      if(sel !== raw[0]) resettable = true;
+      const at = this.FILTERS.findIndex(f=> f.id==='cluster') + 1;
+      cells.splice(at, 0, this.scDropdown({ title:'YC', label: sel.name, flat:true, open: st.filterOpenId==='yc', minWidth:150,
+        toggle: ()=> this.setState({ filterOpenId: st.filterOpenId==='yc' ? null : 'yc' }),
+        items: raw.map(y=>({ label:y.name, active:y.id===sel.id,
+          onClick: ()=> this.setState({ [this.DAILY_P.yc]:y.id, filterOpenId:null }) })) }));
+    }
+    const funnel = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16l-6.2 7.4V19l-3.6-1.8v-4.8L4 5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+    const head = h('div',{ style:{ display:'flex', alignItems:'center', gap:'8px', padding:'0 16px 0 0',
+      fontSize:'14px', fontWeight:'500', whiteSpace:'nowrap' } },
+      h('span',{ class:'ds-icon', style:{ width:'18px', height:'18px' }, html: funnel }), 'Filter');
     // A band, not a panel: the cells fill it edge to edge, vertically and against each
     // other. Only the buttons need breathing room, so they carry their own margins.
     return h('div',{ style:{ display:'flex', alignItems:'stretch', gap:'0',
       padding:'0 20px', background:'var(--color-neutral-100)',
       borderBottom:'1px solid var(--color-divider)' } },
-      this.FILTERS.map(cell),
+      head,
+      cells.map((c,i)=> c),
       // changes are instant, so the only button left is Reset, held out at the far edge
       h('button',{ class:'btn btn-primary', disabled: !resettable,
         onClick: ()=> this.resetFilters(),
@@ -1872,13 +1893,13 @@ const App = {
     if(cfg.open){
       menu = h('div',{},
         h('div',{ onClick: cfg.toggle, style:{ position:'fixed', inset:'0', zIndex:'40' } }),
-        h('div',{ style:{ position:'absolute', top: flat ? '100%' : 'calc(100% + 6px)', left:'0', zIndex:'50', minWidth:'100%',
+        h('div',{ style:{ position:'absolute', top:'calc(100% + 6px)', left:'0', zIndex:'50', minWidth:'100%',
           width:'max-content', maxHeight:'340px', overflow:'auto', background:'var(--color-surface)',
-          border:'1px solid var(--color-neutral-700)', borderRadius: flat ? '0' : '10px',
-          boxShadow:'var(--shadow-md)', padding: flat ? '0' : '6px' } },
+          border:'1px solid var(--color-neutral-700)', borderRadius:'10px',
+          boxShadow:'var(--shadow-md)', padding:'6px' } },
           cfg.items.map(it=> h('div',{ onClick: it.onClick,
             hover:{ background:'color-mix(in srgb, var(--color-text) 6%, transparent)' },
-            style:{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', borderRadius: flat ? '0' : '6px',
+            style:{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', borderRadius:'6px',
               cursor:'pointer', fontSize:'13px', whiteSpace:'nowrap',
               color: it.active? accent : 'var(--color-text)',
               background: it.active? 'color-mix(in srgb, var(--color-accent) 12%, transparent)':'transparent' } },
