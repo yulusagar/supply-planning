@@ -1312,31 +1312,6 @@ const App = {
     this.setState({ filters:d, draftFilters:Object.assign({},d), filterOpenId:null,
       tYc: yc.id, slotYc: yc.id });
   },
-  // a segmented pill pair, the treatment the People/Business tabs used
-  segmented(items){
-    const accent = 'var(--color-accent)';
-    // Equal segments. CSS alone is unreliable here: `1fr` columns only equalise
-    // when the grid has a definite width, and these controls shrink-wrap, so a
-    // grid silently falls back to max-content. Measure once after layout and
-    // pin every segment to the widest instead.
-    return h('div',{ style:{ display:'inline-flex',
-      border:'1px solid var(--color-divider)', borderRadius:'8px', overflow:'hidden' },
-      ref:(el)=>{ requestAnimationFrame(()=>{
-        if(!el.isConnected) return;
-        const kids = [...el.children];
-        if(!kids.length) return;
-        const max = Math.max.apply(null, kids.map(k=> k.getBoundingClientRect().width));
-        kids.forEach(k=>{ k.style.width = max + 'px'; k.style.flex = 'none'; });
-      }); } },
-      items.map((it,i)=> h('div',{ onClick: it.onClick,
-        hover:{ background:'color-mix(in srgb, var(--color-text) 7%, transparent)' },
-        style:{ display:'flex', alignItems:'center', justifyContent:'center',
-          height:'38px', padding:'0 14px', fontSize:'14px',
-          cursor:'pointer', userSelect:'none', fontWeight:'500', whiteSpace:'nowrap',
-          background: it.active ? 'color-mix(in srgb, var(--color-accent) 16%, transparent)':'transparent',
-          color: it.active ? accent : 'var(--color-text)',
-          borderRight: i<items.length-1 ? '1px solid var(--color-divider)' : 'none' } }, it.label)));
-  },
   // The whole tree is rebuilt on every render, so a new node created already in
   // its final state has nothing to animate from. Mount it in the PREVIOUS state,
   // then flip the class a frame later so the transition actually runs.
@@ -1533,12 +1508,8 @@ const App = {
       // Group by names what the HEADER lets you move through: Weekdays puts the
       // date rail up top (rows are the centres for that day); YCs puts the centre
       // picker up top (rows are the days for that centre).
-      h('div',{ style:{ padding:'4px 12px 10px' } }, this.segmented([
-        { label:'Weekdays', active: pivot==='yc',
-          onClick: ()=> this.setState({[P.pivot]:'yc'}) },
-        { label:'YCs',      active: pivot==='weekday',
-          onClick: ()=> this.setState({[P.pivot]:'weekday'}) },
-      ])),
+      option('Weekdays', pivot==='yc',      ()=> this.setState({ [P.pivot]:'yc',      moreOpen:false })),
+      option('YCs',      pivot==='weekday', ()=> this.setState({ [P.pivot]:'weekday', moreOpen:false })),
       divider(),
     ];
     return h('div',{ style:{ position:'relative' } }, trigger,
