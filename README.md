@@ -7,6 +7,9 @@ no build step and no dependencies.
 
 ## Sections
 
+There is no side navigation. The app opens on Day-to-day planning; its ⋮ menu has a
+**Template planning** row, and Template planning has a back arrow at the top left.
+
 - **Template planning** — day-of-week presets for one centre, and where slots are
   defined. *Edit slots* turns the weekday rows into an editable canvas: click a slot
   to slice it, drag dividers to resize, tick rows to cut several days at once. Each

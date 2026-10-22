@@ -49,12 +49,6 @@
   --panel-w:162px;  /* side-panel: D-1|D-2|D-3 split (86) + Attached (62) */
 }
 
-.app-root{
-  /* section nav is a persistent push sidebar: content shifts instead of overlapping */
-  padding-left:0;
-  transition:padding-left .28s cubic-bezier(.4,0,.2,1);
-}
-.app-root.nav-open{ padding-left:224px; }
 
 html,body{margin:0}
 body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:14px;font-weight:500}
@@ -115,9 +109,6 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 /* Icon component: fixed 24dp bounding box, artwork centred, colour inherited */
 .ds-icon{width:24px;height:24px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:inherit}
 .ds-icon svg{display:block}
-/* hamburger lives in the header when collapsed, inside the drawer when open */
-.app-root.nav-open .menu-btn-header{display:none}
-.app-root:not(.nav-open) .menu-btn-drawer{display:none}
 /* modal — scrim + centred surface card, same tokens as the rest of the app */
 .modal-scrim{position:fixed;inset:0;z-index:80;background:color-mix(in srgb,var(--color-text) 38%,transparent);
   display:flex;align-items:center;justify-content:center;padding:24px}
@@ -166,18 +157,6 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 .filter-wrap.open{grid-template-rows:1fr}
 .filter-wrap:not(.open){pointer-events:none}
 @media (prefers-reduced-motion:reduce){.filter-wrap{transition:none}}
-.nav-backdrop{display:none}
-.nav-drawer{position:fixed;top:0;left:0;bottom:0;z-index:60;width:224px;display:flex;flex-direction:column;
-  background:var(--color-surface);border-right:1px solid var(--color-divider);box-shadow:var(--shadow-md);
-  transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
-.app-root.nav-open .nav-drawer{transform:none}
-.nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px 11px 17px;cursor:pointer;
-  border-left:3px solid transparent;color:var(--color-text);transition:background .12s}
-.nav-item:hover{background:color-mix(in srgb, var(--color-text) 5%, transparent)}
-.nav-item.active{border-left-color:var(--color-accent);color:var(--color-accent);
-  background:color-mix(in srgb, var(--color-accent) 12%, transparent)}
-.nav-item svg{display:block;flex:none}
-
 /* slot creation */
 .sc-daytab{display:flex;align-items:center;height:38px;padding:0 15px;font-size:13px;cursor:pointer;user-select:none;transition:background .12s}
 .sc-offhours{background:repeating-linear-gradient(45deg, color-mix(in srgb,var(--color-text) 6%,transparent) 0 6px, transparent 6px 12px)}
@@ -328,7 +307,6 @@ const App = {
     published: false,
     panelOpen: false,     // side panel (Cap. avail. + Rollovers) closed by default
     section: 'daily',     // which app section is open (nav)
-    navOpen: true,        // section nav: persistent push sidebar, open by default
     day: 'mon',           // slot-creation weekday
     slotPivot: 'weekday', // 'yc' = rows are YCs (weekday tabs) | 'weekday' = rows are days (YC picker)
     slotYc: 'hsr',        // selected YC when pivot === 'weekday'
@@ -347,7 +325,6 @@ const App = {
   _scrollEl: null,
   _rulerEl: null,
   _panelBtn: null,
-  _navBtn: null,
   _rootEl: null,
   _now: 0,
   _pt: null,
@@ -386,46 +363,28 @@ const App = {
     }
   },
 
-  // Section nav drawer — open/close animates without a re-render.
-  toggleNav(open){
-    this.state.navOpen = (open===undefined) ? !this.state.navOpen : open;
-    if(this._rootEl) this._rootEl.classList.toggle('nav-open', this.state.navOpen);
-    this.refitAfterTransition();
-    if(this._navBtn){
-      this._navBtn.classList.toggle('active', this.state.navOpen);
-      this._navBtn.setAttribute('aria-expanded', String(this.state.navOpen));
-    }
-  },
-  selectSection(id){
-    // navigate but leave the sidebar in whatever open/closed state the user chose for this session
-    if(id !== this.state.section) this.setState({ section: id });
+  selectSection(id, extra){
+    // Sections are reached from the Day-to-day menu and left with the back button.
+    // Slot edits are already written as they happen, so ending the mode loses nothing —
+    // it just means Edit slots is not still switched on when the section is next opened.
+    if(id !== this.state.section)
+      this.setState(Object.assign({ section:id, slotEdit:false, bulkSel:{}, bulkResult:null, slotSel:null }, extra||{}));
+    else if(extra) this.setState(extra);
   },
 
   // Holiday is hidden for now behind this flag. Flip to true to bring back the
-  // Holiday tab (Slot creation), the Holiday row (Slot creation day-pivot +
-  // Planning templates) and the holiday wording in the nav. Nothing was deleted.
+  // Holiday row in Template planning and the Holiday tab / day-pivot row that
+  // Slot creation used to carry. Nothing was deleted.
   SHOW_HOLIDAY: false,
 
-  // the app sections
-  SECTIONS: [
-    {id:'templates', label:'Template planning',  sub:'Slots and day-of-week presets',   icon:'templates'},
-    {id:'daily',     label:'Day-to-day planning', sub:'Enter numbers for future slots',  icon:'daily'},
-  ],
-  navIcon(name){
-    const s = 'stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"';
-    const g = {
-      slots:'<rect x="2.5" y="4" width="15" height="12" rx="2" '+s+'/><path d="M10 8v4M8 10h4" '+s+'/>',
-      templates:'<rect x="3" y="2.5" width="11" height="14" rx="1.5" '+s+'/><path d="M6.5 6h4M6.5 9h4M6.5 12h2.5" '+s+'/>',
-      daily:'<rect x="2.5" y="3.5" width="15" height="13" rx="2" '+s+'/><path d="M2.5 7.5h15M7 3.5v13M12 3.5v13" '+s+'/>',
-    };
-    return '<svg width="18" height="18" viewBox="0 0 20 20">'+(g[name]||'')+'</svg>';
-  },
-  MENU_SVG: '<svg width="18" height="18" viewBox="0 0 18 18"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 5h12M3 9h12M3 13h12"/></g></svg>',
-  makeMenuBtn(){
-    // header hamburger — shown only when the sidebar is collapsed (CSS-gated)
-    return h('button',{ class:'menu-btn menu-btn-header', ref:(el)=>{ this._navBtn = el; },
-      title:'Sections', 'aria-label':'Open sections menu', 'aria-expanded':String(this.state.navOpen),
-      onClick: ()=> this.toggleNav(), html:this.MENU_SVG });
+  // Template planning is reached from the Day-to-day menu, so it carries a way
+  // straight back. Same 38px square as the other header controls.
+  backButton(){
+    return h('button',{ class:'menu-btn', title:'Back to Day-to-day planning',
+      'aria-label':'Back to Day-to-day planning',
+      onClick: ()=> this.selectSection('daily'),
+      html:'<svg width="18" height="18" viewBox="0 0 18 18"><g stroke="currentColor" stroke-width="1.6" '
+        +'stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M14.5 9H4M8.5 4.5 4 9l4.5 4.5"/></g></svg>' });
   },
   // ---- design-system icons -------------------------------------------------
   // assets/icons/24/{arrow_down,arrow_up}.svg, rendered at their native 24dp box
@@ -448,37 +407,6 @@ const App = {
       h('div',{ style:{ height:'14px', lineHeight:'14px', fontSize:'11px', fontWeight:'500',
         color:'var(--color-text-2)', whiteSpace:'nowrap', paddingLeft:'2px' } }, title),
       node);
-  },
-  buildNav(){
-    const st = this.state;
-    const backdrop = h('div',{ class:'nav-backdrop', onClick: ()=> this.toggleNav(false) });
-    const drawer = h('div',{ class:'nav-drawer' },
-      h('div',{ style:{ padding:'14px 12px 14px 14px', borderBottom:'1px solid var(--color-divider)',
-        display:'flex', alignItems:'center', gap:'12px' } },
-        h('button',{ class:'menu-btn menu-btn-drawer', title:'Collapse sections', 'aria-label':'Collapse sections menu',
-          onClick: ()=> this.toggleNav(false), html:this.MENU_SVG }),
-        h('div',{ style:{ minWidth:'0' } },
-          h('div',{ style:{ fontSize:'10px', letterSpacing:'.1em', textTransform:'uppercase',
-            color:'color-mix(in srgb, var(--color-text) 50%, transparent)', marginBottom:'2px' } }, 'Supply planning'),
-          h('div',{ style:{ fontFamily:'var(--font-heading)', fontWeight:'700', fontSize:'17px', lineHeight:'1.1' } }, 'Ops console'))
-      ),
-      h('div',{ style:{ padding:'8px 0', flex:'1', overflow:'auto' } },
-        this.SECTIONS.map(sec=>{
-          const active = sec.id === st.section;
-          return h('div',{ class:'nav-item'+(active?' active':''),
-            onClick: ()=> this.selectSection(sec.id),
-            'aria-current': active ? 'page' : null },
-            h('span',{ html: this.navIcon(sec.icon) }),
-            h('div',{ style:{ display:'flex', flexDirection:'column', gap:'1px', minWidth:'0' } },
-              h('div',{ style:{ fontSize:'14px', fontWeight: active?'500':'500' } }, sec.label),
-              h('div',{ style:{ fontSize:'11px', color:'color-mix(in srgb, var(--color-text) 55%, transparent)',
-                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, sec.sub)
-            )
-          );
-        })
-      )
-    );
-    return [backdrop, drawer];
   },
   // ---- data (verbatim from the design) ----
   data(view){
@@ -708,7 +636,7 @@ const App = {
       whiteSpace:'nowrap', fontSize:'12px', color:accent, pointerEvents:'none', opacity: st.tPublished?'1':'0' } }, 'Templates updated ✓');
     const topRow = h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', padding:'12px 20px',
       background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
-      this.makeMenuBtn(),
+      this.backButton(),
       this.filtersButton(),
       h('div',{ style:{ display:'flex', alignItems:'center', gap:'10px', marginLeft:'auto' } },
         this.slotModeButtons(),
@@ -855,9 +783,9 @@ const App = {
         h('div',{ style:{ height:headH+'px' } }), midBlocks));
     const main = h('div',{ style:{ display:'flex', alignItems:'flex-start', padding:'0 16px 40px' } }, leftRail, middle);
 
-    return h('div',{ class:'app-root'+(st.navOpen?' nav-open':''), ref:(el)=>{ this._rootEl=el; },
+    return h('div',{ class:'app-root', ref:(el)=>{ this._rootEl=el; },
       style:{ minHeight:'100vh', background:'var(--color-bg)', color:'var(--color-text)', fontSize:'14px' } },
-      this.buildNav(), topBar, main,
+      topBar, main,
       st.slotEdit ? this.buildBulkBar() : null);
   },
 
@@ -967,7 +895,6 @@ const App = {
 
     const topRow = h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'16px', padding:'12px 20px',
       background:'var(--color-bg)', borderBottom:'1px solid var(--color-divider)' } },
-      this.makeMenuBtn(),
       this.filtersButton(),
       headCenter,
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', marginLeft:'auto' } },
@@ -1275,10 +1202,10 @@ const App = {
     const main = h('div',{ style:{ display:'flex', alignItems:'flex-start', padding:'0 16px 40px' } },
       leftRail, middle, panel);
 
-    return h('div',{ class:'app-root'+(st.panelOpen?' panel-open':'')+(st.navOpen?' nav-open':''),
+    return h('div',{ class:'app-root'+(st.panelOpen?' panel-open':''),
       ref:(el)=>{ this._rootEl = el; },
       style:{ minHeight:'100vh', background:'var(--color-bg)', color:'var(--color-text)', fontSize:'14px' } },
-      this.buildNav(), topBar, main,
+      topBar, main,
       st.reduceOpen ? this.buildReduceDialog()
         : (st.pubOpen ? this.buildPublishDialog(P)
         : (st.uploadOpen ? this.buildUploadDialog() : null)));
@@ -1624,7 +1551,7 @@ const App = {
         planningFor,
         viewing,
         // a way across to the other section without opening the side panel
-        item('Template planning', true, ()=> this.setState({ section:'templates', moreOpen:false })),
+        item('Template planning', true, ()=> this.selectSection('templates', { moreOpen:false })),
         item('Bulk Upload', true, ()=> this.setState({ uploadOpen:true, moreOpen:false }))));
   },
 
