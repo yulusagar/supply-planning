@@ -15,8 +15,9 @@ There is no side navigation. The app opens on Day-to-day planning; its ⋮ menu 
   to slice it, drag dividers to resize, tick rows to cut several days at once. Each
   slot's type pill switches it between Planned and Blocked. Template inputs are
   disabled while editing.
-- **Day-to-day planning** — enter planned numbers per slot and bike model. The ⋮ menu
-  switches the fleet (Corporate / Business) and how the rows are grouped. The
+- **Day-to-day planning** — enter planned numbers per slot and bike model. Filters
+  has **Planning for** (Corporate / Business, applied with the rest); the ⋮ menu sets how
+  the rows are grouped. The
   template number shows as helper text in an empty field (→ accepts it). There is no
   save step: type the numbers and **Publish**, now or on a schedule. Total capacity
   counts published numbers only.

@@ -1279,6 +1279,8 @@ const App = {
   // filtersFor(); the stored values are shared, so moving between sections keeps
   // a city or centre selection intact.
   FILTER_DEFS: {
+    // which fleet is being planned; Apply switches the Day-to-day view to match
+    fleet:   { id:'fleet',   label:'Planning for',  opts:['Corporate','Business'] },
     city:    { id:'city',    label:'City',          opts:['Bangalore','Delhi NCR','Mumbai','Pune'] },
     cluster: { id:'cluster', label:'Cluster',       opts:['ALL','Cluster 1','Cluster 2','Cluster 3'] },
     centre:  { id:'centre',  label:'Select centre', opts:null },   // filled from SLOT_YC
@@ -1287,7 +1289,7 @@ const App = {
   // Slot creation plans one centre at a time and has no bike split, so it drops
   // Bike Category; day-to-day picks its centre elsewhere, so it drops Select centre.
   SECTION_FILTERS: {
-    daily:     ['city','cluster','cat'],
+    daily:     ['fleet','city','cluster','cat'],
     templates: ['city','cluster','centre','cat'],
   },
   filtersFor(section){
@@ -1310,19 +1312,29 @@ const App = {
     if(!this.state.filters) this.state.filters = this.defaultFilters();
     if(!this.state.draftFilters) this.state.draftFilters = Object.assign({}, this.state.filters);
   },
+  // Planning for exists only in Day-to-day. Applying or resetting from any other
+  // section must leave it alone, or a fleet staged over there would flip the
+  // Day-to-day view behind the user's back.
+  fleetFilterShown(){ return this.filtersFor().some(f=> f.id==='fleet'); },
   applyFilters(){
     const d = Object.assign({}, this.state.draftFilters);
+    const fleetShown = this.fleetFilterShown();
+    if(!fleetShown) d.fleet = this.state.filters.fleet;
     const next = { filters:d, filterOpenId:null };
     // Select centre drives whichever section's centre the header used to pick
     const yc = this.SLOT_YC.find(y=> y.name === d.centre);
     if(yc){ next.tYc = yc.id; next.slotYc = yc.id; }
+    if(fleetShown) next.view = d.fleet === 'Business' ? 'business' : 'people';
     this.setState(next);
   },
   resetFilters(){
     const d = this.defaultFilters();
+    const fleetShown = this.fleetFilterShown();
+    if(!fleetShown) d.fleet = this.state.filters.fleet;
     const yc = this.SLOT_YC.find(y=> y.name === d.centre) || this.SLOT_YC[0];
-    this.setState({ filters:d, draftFilters:Object.assign({},d), filterOpenId:null,
-      tYc: yc.id, slotYc: yc.id });
+    const next = { filters:d, draftFilters:Object.assign({},d), filterOpenId:null, tYc: yc.id, slotYc: yc.id };
+    if(fleetShown) next.view = 'people';
+    this.setState(next);
   },
   // The whole tree is rebuilt on every render, so a new node created already in
   // its final state has nothing to animate from. Mount it in the PREVIOUS state,
@@ -1481,11 +1493,10 @@ const App = {
   buildMoreMenu(P){
     const st = this.state, accent = 'var(--color-accent)';
     // Icon column: every icon sits at x = 12 and every label at x = 12 + 16 + 10,
-    // so the two grouped sections (icon on the heading, rows indented under it)
-    // and the two plain actions share one left edge and one text edge.
+    // so the grouped section (icon on the heading, rows indented under it)
+    // and the plain actions share one left edge and one text edge.
     const ICON_W = 16, ICON_GAP = 10, TEXT_X = 12 + ICON_W + ICON_GAP;
     const glyphs = {
-      fleet:    '<circle cx="9" cy="6.3" r="2.7"/><path d="M3.4 15.2c.6-2.8 2.7-4.2 5.6-4.2s5 1.4 5.6 4.2"/>',
       groupBy:  '<rect x="2.5" y="3" width="13" height="4.6" rx="1.2"/><rect x="2.5" y="10.4" width="13" height="4.6" rx="1.2"/>',
       template: '<rect x="3.5" y="2" width="11" height="14" rx="1.5"/><path d="M6.5 6h5M6.5 9h5M6.5 12h3"/>',
       upload:   '<path d="M9 11.5V3.4"/><path d="M5.8 6.4 9 3.2l3.2 3.2"/><path d="M3 11.5v2.3c0 .8.6 1.4 1.4 1.4h9.2c.8 0 1.4-.6 1.4-1.4v-2.3"/>',
@@ -1528,13 +1539,6 @@ const App = {
       h('span',{ style:{ marginLeft:'auto', paddingLeft:'16px', fontSize:'12px', color:accent,
         opacity: active ? '1' : '0' } }, '\u2713'));
 
-    // which fleet is being planned — a mode, so it is always offered, in either view
-    const planningFor = [
-      sectionTitle('Planning for', 'fleet'),
-      option('Corporate', !isBiz, ()=> this.setState({ view:'people',   moreOpen:false })),
-      option('Business',   isBiz, ()=> this.setState({ view:'business', moreOpen:false })),
-      divider(),
-    ];
     const viewing = isBiz ? null : [
       sectionTitle('Group by', 'groupBy'),
       // Group by names what the HEADER lets you move through: Weekdays puts the
@@ -1551,9 +1555,8 @@ const App = {
         width:'max-content', minWidth:'170px', background:'var(--color-surface)',
         border:'1px solid var(--color-neutral-700)',
         borderRadius:'10px', boxShadow:'var(--shadow-md)', padding:'6px' } },
-        planningFor,
         viewing,
-        // a way across to the other section without opening the side panel
+        // a way across to the other section
         item('Template planning', true, ()=> this.selectSection('templates', { moreOpen:false }), 'template'),
         item('Bulk Upload', true, ()=> this.setState({ uploadOpen:true, moreOpen:false }), 'upload')));
   },
