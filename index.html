@@ -850,11 +850,11 @@ const App = {
         return h('div', {
           onClick: ()=> this.setState({[P.dateRel]:x.rel}),
           title: today?'Today (editable)': past?'Past (read-only)':'Future (editable)',
-          hover: { borderColor:'var(--color-neutral-600)' },
+          hover: { background:'color-mix(in srgb, var(--color-active) 14%, transparent)' },
           style:{ display:'flex', flexDirection:'column', alignItems:'center', gap:'1px',
             minWidth:'46px', height:'38px', justifyContent:'center', padding:'0 8px', borderRadius:'8px', cursor:'pointer',
             border:'1px solid '+(sel? 'var(--color-active)' : 'transparent'),
-            background: sel? 'color-mix(in srgb, var(--color-active) 14%, transparent)':'transparent',
+            background:'transparent',
             opacity: past? '.82' : '1' } },
           h('div',{style:{ fontSize:'10px', letterSpacing:'.04em', textTransform:'uppercase', color: muted }}, x.dow),
           h('div',{style:{ fontSize:'15px', fontWeight:'500', lineHeight:'18px', minWidth:'26px', textAlign:'center',
