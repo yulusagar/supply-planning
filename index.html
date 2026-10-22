@@ -859,8 +859,8 @@ const App = {
           h('div',{style:{ fontSize:'10px', letterSpacing:'.04em', textTransform:'uppercase', color: muted }}, x.dow),
           h('div',{style:{ fontSize:'15px', fontWeight:'500', lineHeight:'18px', minWidth:'26px', textAlign:'center',
             borderRadius:'9px', padding: today?'0 6px':'0', margin: today?'0 -6px':'0',
-            background: today ? 'var(--color-accent)' : 'transparent',
-            color: today ? 'var(--color-accent-100)' : 'var(--color-text)' }}, String(x.d)),
+            background: today ? 'color-mix(in srgb, var(--color-active) 32%, var(--color-surface))' : 'transparent',
+            color:'var(--color-text)' }}, String(x.d)),
           h('div',{style:{ width:'4px', height:'4px', marginTop:'1px' }})
         );
       })
