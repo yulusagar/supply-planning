@@ -32,3 +32,16 @@ site's data in your browser to start fresh.
 Open `index.html` directly, or serve it (localStorage is more reliable over http):
 
     python3 -m http.server 8080
+
+## Planning rules (Day-to-day)
+
+- **Business** is planned per company: pick the company after City, and every YC shows as an accordion with that company's numbers. There is no YC picker in the header.
+- The slot the clock is in is editable; only slots already over are read-only.
+- Lowering a number below what it was asks for a reason (Excessive swap orders / Spare part storage / Other), saves it and lets you keep editing.
+- A number can't go below what is already booked. The field turns red when you leave it, and Update stays off until it's fixed.
+- Edited cells keep a light blue tint until published or cancelled. **Cancel** (left of **Update N slot values**) discards every unpublished change.
+- Rollovers (ⓘ) now open as extra columns in the left rail.
+
+## Mobile (up to 720px wide)
+
+A separate layout, not the desktop squeezed down: day strip, filter chips that open a bottom sheet, centres as stacked cards with capacity and slot blocks (Live / Done / Upcoming), dialogs as bottom sheets, and a pinned Cancel / Update bar. Editing slot times (slice, merge, resize) stays desktop-only.

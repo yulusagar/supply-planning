@@ -234,6 +234,75 @@ input.plan::placeholder{color:var(--color-neutral-400);opacity:1;font-weight:500
 :focus{outline:none}
 :focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
 ::selection{background:color-mix(in srgb, var(--color-accent) 30%, transparent)}
+
+/* ==========================================================================
+   Mobile (<= 720px). Not the desktop grid squeezed down: the 24h timeline is
+   dropped, centres become stacked cards, slots become labelled blocks, filters
+   become chips that open a bottom sheet, and Cancel / Update sit in a thumb-reach
+   bar. Every rule the desktop has (live slot editable, reduction reason, booked
+   floor, edit tint) runs through the same code.
+   ========================================================================== */
+.m-root{min-height:100vh;background:var(--color-bg);color:var(--color-text);font-size:14px;padding-bottom:104px}
+.m-top{position:sticky;top:0;z-index:30;background:var(--color-bg);border-bottom:1px solid var(--color-divider)}
+.m-bar{display:flex;align-items:center;gap:8px;padding:10px 16px}
+.m-title{flex:1;min-width:0;font-family:var(--font-heading);font-weight:700;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-strip{display:flex;gap:2px;overflow-x:auto;padding:0 10px 10px;scrollbar-width:none}
+.m-strip::-webkit-scrollbar,.m-chips::-webkit-scrollbar{display:none}
+.m-day{flex:1 0 44px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:46px;border-radius:8px;
+  border:1px solid transparent;cursor:pointer;gap:1px}
+.m-day.sel{border-color:var(--color-active)}
+.m-day.past{opacity:.82}
+.m-day .dow{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)}
+.m-day .dn{font-size:15px;font-weight:500;line-height:18px;min-width:26px;text-align:center;border-radius:9px}
+.m-day.today .dn{background:color-mix(in srgb,var(--color-active) 32%,var(--color-surface))}
+.m-chips{display:flex;gap:8px;overflow-x:auto;padding:0 16px 10px;align-items:stretch;scrollbar-width:none}
+.m-chip{flex:none;display:flex;align-items:center;gap:6px;padding:6px 8px 6px 12px;border:1px solid var(--color-divider);border-radius:10px;
+  background:var(--color-surface);font:inherit;color:inherit;text-align:left;cursor:pointer}
+.m-chip .txt{display:flex;flex-direction:column}
+.m-chip .k{font-size:10px;color:var(--color-text-2);line-height:12px}
+.m-chip .v{font-size:13px;font-weight:500;line-height:17px;white-space:nowrap}
+.m-chip.ico{padding:0 10px;justify-content:center}
+.m-chip.on{border-color:var(--color-active);background:color-mix(in srgb,var(--color-active) 14%,transparent)}
+.m-chip.link{border:none;background:none;color:var(--color-text-2);font-weight:500;padding:0 6px}
+.m-card{margin:12px 16px 0;background:var(--color-surface);border:1px solid var(--color-divider);border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.m-card-h{display:flex;align-items:center;gap:8px;padding:0 10px 0 12px;min-height:56px;cursor:pointer;background:var(--color-neutral-900)}
+.m-card-h .nm{flex:1;min-width:0;font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-card-h .meta{font-size:12px;color:var(--color-text-2);white-space:nowrap}
+.m-tag{font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--color-neutral-200);color:var(--color-text);white-space:nowrap}
+.m-tag.live{background:color-mix(in srgb,var(--color-active) 22%,var(--color-surface))}
+.m-body{padding:4px 12px 12px;display:flex;flex-direction:column;gap:12px}
+.m-caps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding-top:8px}
+.m-cap{border:1px solid var(--color-divider);border-radius:10px;padding:8px 10px;background:var(--color-neutral-100)}
+.m-cap .l{font-size:11px;color:var(--color-text-2)}
+.m-cap .n{font-size:18px;font-weight:700;font-family:var(--font-heading);line-height:24px}
+.m-cap .x{font-size:11px;color:var(--color-text-2);line-height:15px;font-variant-numeric:tabular-nums}
+.m-slot{border:1px solid var(--color-divider);border-radius:10px;overflow:hidden}
+.m-slot-h{display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:13px}
+.m-slot-h b{font-weight:700}
+.m-slot-h .rng{color:var(--color-text-2);font-size:12px;flex:1}
+.m-grid{display:grid;grid-template-columns:minmax(0,1.15fr) repeat(3,minmax(0,1fr));align-items:center}
+.m-grid>div{padding:0 6px;min-height:46px;display:flex;align-items:center;justify-content:center;border-top:1px solid var(--color-divider);font-variant-numeric:tabular-nums}
+.m-grid>div.h{min-height:30px;border-top:none;font-size:11px;color:var(--color-text-2);background:var(--color-neutral-100)}
+.m-grid>div.lb{justify-content:flex-start;padding-left:12px;font-size:14px}
+.m-grid>div.dim{color:color-mix(in srgb,var(--color-text) 40%,transparent)}
+.m-root input.plan{height:38px;font-size:16px}
+.m-root .plan-cell{width:100%}
+.m-bottom{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  background:color-mix(in srgb,var(--color-surface) 94%,transparent);border-top:1px solid var(--color-divider);backdrop-filter:blur(6px)}
+.m-bottom .hdr-btn{flex:1;height:46px}
+.m-note{margin:12px 16px 0;padding:12px;border:1px dashed var(--color-neutral-600);border-radius:10px;font-size:13px;color:var(--color-text-2)}
+.m-sched{margin:10px 16px 0}
+.m-scrim{position:fixed;inset:0;z-index:70;background:color-mix(in srgb,var(--color-text) 38%,transparent);display:flex;align-items:flex-end}
+.m-sheet{width:100%;max-height:72vh;overflow:auto;background:var(--color-surface);border-radius:16px 16px 0 0;padding:6px 8px calc(16px + env(safe-area-inset-bottom))}
+.m-sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--color-neutral-300);margin:6px auto 4px}
+.m-sheet .ttl{padding:8px 12px 6px;font-family:var(--font-heading);font-weight:700;font-size:16px}
+.m-opt{display:flex;align-items:center;padding:14px 12px;border-radius:10px;font-size:15px;cursor:pointer}
+.m-opt.on{background:color-mix(in srgb,var(--color-active) 12%,transparent)}
+.m-opt .tick{margin-left:auto;color:var(--color-active)}
+@media (max-width:720px){
+  .modal-scrim{align-items:flex-end;padding:0}
+  .modal{max-width:none;border-radius:16px 16px 0 0}
+}
 </style>
 </head>
 <body>
@@ -626,8 +695,244 @@ const App = {
     );
   },
 
+
+  // ======================================================================
+  //  MOBILE (<= 720px) — a separate layout built from the same state and rules
+  //  Translation pattern:
+  //    date rail            -> scrolling day strip (same selected stroke + today chip)
+  //    filter strip         -> chips; tap opens a bottom sheet of options
+  //    ⋮ menu               -> unchanged (Group, Manage slots & template, Bulk Upload)
+  //    YC accordion + grid  -> stacked cards; open one to see capacity and its slots
+  //    24h timeline         -> slot blocks (Live / Done / Upcoming) with a 4-column table
+  //    Cancel / Update      -> thumb-reach bar pinned to the bottom, only while pending
+  //    Edit slots (drag)    -> desktop only; the timeline gesture has no honest touch twin
+  // ======================================================================
+  isMobile(){ return window.innerWidth <= 720; },
+
+  // everything a Planned/Booked/Attached row needs for one slot of one model
+  cellInfo(P, yc, mod, rel, s){
+    const st = this.state;
+    const status = this.slotStatus(s, rel);
+    const editable = status !== 'past';
+    const v = mod.vals[s[0]] || [0,0,0];
+    const key = st[P.view]+'|'+rel+'|'+yc.id+'|'+mod.key+'|'+s[0];
+    const planned = editable
+      ? (st[P.edits][key] !== undefined ? st[P.edits][key]
+         : (st.pubVals[key] !== undefined ? st.pubVals[key]
+            : (st.savedVals[key] !== undefined ? st.savedVals[key] : (rel >= 2 ? '' : String(v[0])))))
+      : String(v[0]);
+    const booked = this.bookedFor(key);
+    return { key, status, editable, planned, booked,
+      bookedShown: ((editable && planned === '') || rel >= 2) ? '0' : String(v[1]),
+      attShow: status !== 'future', att: String(v[2]) };
+  },
+  slotsFor(yc, rel){
+    const scy = this.SLOT_YC.find(y=> y.id===yc.id);
+    if(!scy) return yc.slots || [];
+    const wk = this.wkKeyForRel(rel);
+    return scy.closed.indexOf(wk) !== -1 ? [] : this.getSlots(wk, scy).map((sl,i)=>[i+1, sl.start, sl.end, !!sl.blocked]);
+  },
+  // filter chips: the same filters the desktop strip shows, plus YC when grouped by YC
+  mFilterDefs(){
+    const st = this.state;
+    const defs = this.FILTERS.map(f=>({ id:f.id, label:f.label, value:st.filters[f.id], opts:f.opts,
+      pick:(o)=> this.setFilter(f.id, o) }));
+    if(this.ycFilterShown()){
+      const raw = this.data(st[this.DAILY_P.view]);
+      const sel = raw.find(y=> y.id===st[this.DAILY_P.yc]) || raw[0];
+      const at = defs.findIndex(d=> d.id==='cluster') + 1;
+      defs.splice(at, 0, { id:'yc', label:'YC', value:sel.name, opts: raw.map(y=> y.name),
+        pick:(o)=>{ const y = raw.find(r=> r.name===o); this.setState({ [this.DAILY_P.yc]: y.id, filterOpenId:null }); } });
+    }
+    return defs;
+  },
+  mResettable(){
+    const st = this.state, def = this.defaultFilters();
+    let r = this.FILTERS.some(f=> st.filters[f.id] !== def[f.id]);
+    if(this.ycFilterShown()){ const raw = this.data(st[this.DAILY_P.view]); if(st[this.DAILY_P.yc] && st[this.DAILY_P.yc] !== raw[0].id) r = true; }
+    return r;
+  },
+  mChips(withRoll){
+    const st = this.state, muted = 'color-mix(in srgb, var(--color-text) 55%, transparent)';
+    const chips = this.mFilterDefs().map(f=> h('button',{ class:'m-chip', onClick: ()=> this.setState({ filterOpenId:f.id }) },
+      h('span',{ class:'txt' }, h('span',{ class:'k' }, f.label), h('span',{ class:'v' }, f.value)),
+      this.iconEl('arrowDown', muted)));
+    if(withRoll) chips.push(h('button',{ class:'m-chip ico'+(st.panelOpen?' on':''), title:'Rollovers', 'aria-pressed':String(!!st.panelOpen),
+      onClick: ()=> this.setState({ panelOpen: !st.panelOpen }), html: this.infoIcon(!!st.panelOpen) }));
+    if(this.mResettable()) chips.push(h('button',{ class:'m-chip link', onClick: ()=> this.resetFilters() }, 'Reset'));
+    return h('div',{ class:'m-chips' }, chips);
+  },
+  mSheet(){
+    const st = this.state, id = st.filterOpenId;
+    const f = id && this.mFilterDefs().find(d=> d.id===id);
+    if(!f) return null;
+    return h('div',{ class:'m-scrim', onClick:(e)=>{ if(e.target.classList.contains('m-scrim')) this.setState({ filterOpenId:null }); } },
+      h('div',{ class:'m-sheet' },
+        h('div',{ class:'grab' }),
+        h('div',{ class:'ttl' }, f.label),
+        f.opts.map(o=> h('div',{ class:'m-opt'+(o===f.value?' on':''), onClick: ()=> f.pick(o) },
+          h('span',{}, o), o===f.value ? h('span',{ class:'tick' }, '✓') : null))));
+  },
+  mDayStrip(P){
+    const st = this.state, rel = st[P.dateRel], DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], base = new Date();
+    return h('div',{ class:'m-strip' }, [-3,-2,-1,0,1,2,3].map(r=>{
+      const dt = new Date(base); dt.setDate(base.getDate()+r);
+      return h('div',{ class:'m-day'+(r===rel?' sel':'')+(r===0?' today':'')+(r<0?' past':''),
+        onClick: ()=> this.setState({ [P.dateRel]: r }) },
+        h('div',{ class:'dow' }, DOW[dt.getDay()]), h('div',{ class:'dn' }, String(dt.getDate())));
+    }));
+  },
+  // pinned action bar: always built (so the refresh code has its buttons), shown only while pending
+  mActionBar(P){
+    const t = this.planTally(), bad = this.invalidKeys().length > 0, n = t.pending + t.queued;
+    const cancel = h('button',{ class:'hdr-btn', ref:(el)=>{ this._cancelBtn = el; },
+      style: t.pending>0 ? null : { display:'none' }, onClick: ()=> this.cancelEdits() }, 'Cancel');
+    const upd = h('button',{ class:'hdr-btn'+((t.canPublish && !bad)?' armed':''), ref:(el)=>{ this._publishBtn = el; },
+      disabled: !t.canPublish || bad,
+      title: bad ? 'Some values are below what is already booked' : '',
+      onClick: ()=> this.openPublishDialog() }, 'Update '+n+' slot value'+(n===1?'':'s'));
+    return h('div',{ class:'m-bottom', ref:(el)=>{ this._mBar = el; }, style: t.canPublish ? null : { display:'none' } }, cancel, upd);
+  },
+  mCard(P, r){
+    const st = this.state, yc = r.yc, rel = r.rel;
+    const expanded = !!st[P.expanded][r.key];
+    const slots = this.slotsFor(yc, rel);
+    const models = this.visibleModels(yc);
+    const liveSlot = rel === 0 && slots.some(sl=> this.slotStatus(sl, rel)==='live');
+    const rollShow = rel <= 0;
+    const toggle = ()=> this.setState(ss=>({ [P.expanded]: Object.assign({}, ss[P.expanded], {[r.key]: !ss[P.expanded][r.key]}) }));
+    const head = h('div',{ class:'m-card-h', onClick: toggle },
+      this.iconEl(expanded?'arrowUp':'arrowDown', 'var(--color-text-2)'),
+      h('span',{ class:'nm' }, r.title),
+      liveSlot ? h('span',{ class:'m-tag live' }, 'Live') : null,
+      h('span',{ class:'meta' }, slots.length ? slots.length+' slot'+(slots.length===1?'':'s') : 'Closed'));
+    if(!expanded) return h('div',{ class:'m-card' }, head);
+
+    const caps = h('div',{ class:'m-caps' }, models.map(mod=>{
+      const decl = this.declaredCapacity(yc, mod, rel, slots, P);
+      return h('div',{ class:'m-cap' },
+        h('div',{ class:'l' }, mod.label+' · total'),
+        h('div',{ class:'n' }, String(this.totalCapacity(yc, mod, rel, slots, P))),
+        st.panelOpen ? [
+          h('div',{ class:'x' }, decl+' + '+(rollShow ? mod.roll.total : 0)),
+          h('div',{ class:'x' }, 'Att '+(rollShow ? mod.roll.attac : '—')),
+          h('div',{ class:'x' }, rollShow ? mod.roll.split.join(' | ') : '—')
+        ] : null);
+    }));
+
+    const blocks = slots.map(sl=>{
+      const status = this.slotStatus(sl, rel);
+      const fill = sl[3] ? 'repeating-linear-gradient(45deg, color-mix(in srgb,var(--color-text) 6%,transparent) 0 6px, transparent 6px 12px), var(--color-surface)'
+        : status==='live' ? 'color-mix(in srgb, var(--color-active) 14%, var(--color-surface))'
+        : status==='past' ? 'color-mix(in srgb, var(--color-text) 8%, var(--color-surface))' : 'var(--color-neutral-900)';
+      const tag = sl[3] ? 'Blocked' : status==='live' ? 'Live now' : status==='past' ? 'Done' : 'Upcoming';
+      const hd = h('div',{ class:'m-slot-h', style:{ background:fill } },
+        h('b',{}, 'Slot '+sl[0]), h('span',{ class:'rng' }, this.hhmm(sl[1])+'–'+this.hhmm(sl[2])),
+        h('span',{ class:'m-tag'+(status==='live' && !sl[3] ? ' live' : '') }, tag));
+      if(sl[3]) return h('div',{ class:'m-slot' }, hd);
+      const cells = [ h('div',{ class:'h lb' }, 'Model'), h('div',{ class:'h' }, 'Planned'), h('div',{ class:'h' }, 'Booked'), h('div',{ class:'h' }, 'Attached') ];
+      models.forEach(mod=>{
+        const c = this.cellInfo(P, yc, mod, rel, sl);
+        const tpl = (rel>=2 && c.editable && st[P.view] !== 'business') ? this.tplValueFor(yc.id, rel, sl[1], mod.key) : '';
+        cells.push(h('div',{ class:'lb' }, mod.label));
+        cells.push(h('div',{}, c.editable ? this.planCell(c.key, { planned:c.planned, tplVal:tpl, booked:c.booked }) : h('span',{}, c.planned)));
+        cells.push(h('div',{ class: c.bookedShown==='0' && c.planned==='' ? 'dim' : '' }, c.bookedShown));
+        cells.push(h('div',{ class: c.attShow ? '' : 'dim' }, c.attShow ? c.att : '–'));
+      });
+      return h('div',{ class:'m-slot' }, hd, h('div',{ class:'m-grid' }, cells));
+    });
+    return h('div',{ class:'m-card' }, head, h('div',{ class:'m-body' }, caps, blocks.length ? blocks : h('div',{ style:{ color:'var(--color-text-2)', padding:'8px 0' } }, 'No operating hours this day')));
+  },
+  buildMobile(){
+    const st = this.state;
+    this._scrollEl = null; this._rulerEl = null; this._panelBtn = null; this._publishBtn = null; this._cancelBtn = null; this._mBar = null;
+    this._now = this.nowHour();
+    return st.section === 'templates' ? this.buildMobileTemplates() : this.buildMobileDaily();
+  },
+  buildMobileDaily(){
+    const P = this.DAILY_P, st = this.state;
+    this.ensureFilters();
+    this._activeEdits = P.edits;
+    const rel = st[P.dateRel], isBiz = st[P.view]==='business', pivot = st[P.pivot];
+    const raw = isBiz ? this.bizRows() : this.data(st[P.view]);
+    const selYc = raw.find(y=> y.id===st[P.yc]) || raw[0];
+    const byDates = !(isBiz || pivot==='yc');
+    const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], base = new Date();
+    const rows = byDates
+      ? [-3,-2,-1,0,1,2,3].map(r=>{ const dt = new Date(base); dt.setDate(base.getDate()+r);
+          return { yc:selYc, rel:r, key:'d'+r, title: DOW[dt.getDay()]+' '+dt.getDate()+(r===0?' · Today':r<0?' · Past':'') }; })
+      : raw.map(yc=>({ yc, rel, key:yc.id, title:yc.name }));
+    const sched = st.schedule ? h('div',{ class:'m-sched' }, h('button',{ class:'sched-chip', style:{ border:'none', cursor:'pointer' },
+      onClick: ()=> this.openPublishDialog() }, h('span',{ class:'dot' }), h('span',{}, 'Scheduled · '+this.schedLabel(st.schedule)))) : null;
+    return h('div',{ class:'m-root' },
+      h('div',{ class:'m-top' },
+        h('div',{ class:'m-bar' }, h('div',{ class:'m-title' }, 'Supply planning'), this.buildMoreMenu(P)),
+        byDates ? null : this.mDayStrip(P),
+        this.mChips(true)),
+      sched,
+      rows.map(r=> this.mCard(P, r)),
+      this.mActionBar(P),
+      this.mSheet(),
+      st.reduceOpen ? this.buildReduceDialog()
+        : (st.pubOpen ? this.buildPublishDialog(P) : (st.uploadOpen ? this.buildUploadDialog() : null)));
+  },
+  buildMobileTemplates(){
+    const st = this.state;
+    this.ensureFilters();
+    this._activeEdits = 'tEdits';
+    const selYc = this.SLOT_YC.find(y=> y.id===st.tYc) || this.SLOT_YC[0];
+    const markDirty = ()=>{
+      this.state.tDirty = true; this.persist();
+      if(this._mBar) this._mBar.style.display = '';
+      if(this._publishBtn){ this._publishBtn.removeAttribute('disabled'); this._publishBtn.classList.add('armed'); }
+    };
+    const cards = this.TPL_DAYS.map(([day, label])=>{
+      const closed = selYc.closed.indexOf(day) !== -1;
+      const slots = closed ? [] : this.getSlots(day, selYc);
+      const open = !!st.tExpanded[day];
+      const toggle = ()=> this.setState(ss=>({ tExpanded: Object.assign({}, ss.tExpanded, {[day]: !ss.tExpanded[day]}) }));
+      const head = h('div',{ class:'m-card-h', onClick: toggle },
+        this.iconEl(open?'arrowUp':'arrowDown', 'var(--color-text-2)'),
+        h('span',{ class:'nm' }, label),
+        h('span',{ class:'meta' }, closed ? 'Closed' : slots.length+' slot'+(slots.length===1?'':'s')));
+      if(!open) return h('div',{ class:'m-card' }, head);
+      const blocks = slots.map((sl,i)=>{
+        const hd = h('div',{ class:'m-slot-h', style:{ background: sl.blocked ? 'repeating-linear-gradient(45deg, color-mix(in srgb,var(--color-text) 6%,transparent) 0 6px, transparent 6px 12px), var(--color-surface)' : 'var(--color-neutral-900)' } },
+          h('b',{}, 'Slot '+(i+1)), h('span',{ class:'rng' }, this.hhmm(sl.start)+'–'+this.hhmm(sl.end)),
+          h('span',{ class:'m-tag' }, sl.blocked ? 'Blocked' : 'Planned'));
+        if(sl.blocked) return h('div',{ class:'m-slot' }, hd);
+        return h('div',{ class:'m-slot' }, hd, h('div',{ class:'m-grid', style:{ gridTemplateColumns:'minmax(0,1fr) minmax(0,1.4fr)' } },
+          this.TPL_MODELS.map(([mk, ml])=>{
+            const key = 'tpl|'+selYc.id+'|'+day+'|'+sl.start+'|'+mk;
+            const cur = st.tEdits[key] !== undefined ? st.tEdits[key] : '';
+            const inp = h('input',{ class:'plan'+(cur===''?' tpl-empty':''), type:'text', inputmode:'numeric', placeholder:'—', value:cur });
+            inp.addEventListener('input', (e)=>{
+              const val = e.target.value.replace(/[^0-9]/g,'').slice(0,4); e.target.value = val;
+              if(val==='') delete this.state.tEdits[key]; else this.state.tEdits[key] = val;
+              e.target.classList.toggle('tpl-empty', val==='');
+              markDirty();
+            });
+            return [ h('div',{ class:'lb' }, ml), h('div',{}, h('div',{ class:'plan-cell' }, inp)) ];
+          })));
+      });
+      return h('div',{ class:'m-card' }, head, h('div',{ class:'m-body' },
+        blocks.length ? blocks : h('div',{ style:{ color:'var(--color-text-2)', padding:'8px 0' } }, 'No operating hours this day')));
+    });
+    const upd = h('button',{ class:'hdr-btn'+(st.tDirty?' armed':''), ref:(el)=>{ this._publishBtn = el; },
+      disabled: !st.tDirty, onClick: ()=> this.publishTemplate() }, 'Update templates');
+    return h('div',{ class:'m-root' },
+      h('div',{ class:'m-top' },
+        h('div',{ class:'m-bar' }, this.backButton(), h('div',{ class:'m-title' }, 'Manage slots & template')),
+        this.mChips(false)),
+      h('div',{ class:'m-note' }, 'Editing slot times (slice, merge, resize) is on desktop. Here you can set the template numbers for each slot.'),
+      cards,
+      h('div',{ class:'m-bottom', ref:(el)=>{ this._mBar = el; }, style: st.tDirty ? null : { display:'none' } }, upd),
+      this.mSheet());
+  },
+
   // ---- build the whole tree ----
   build(){
+    if(this.isMobile()) return this.buildMobile();
     // Two sections. A stale id (the old 'slots', say) lands on Template planning.
     if(this.state.section === 'daily') return this.buildDaily();
     return this.buildTemplates();
