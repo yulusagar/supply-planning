@@ -46,8 +46,9 @@
 
   --left-w:196px;   /* left rail: model label (122) + capacity column (74) */
   --cap-w:74px;     /* Total capacity — always present */
-  --att-w:0px;      /* its breakdown — widens with the Rollovers panel */
-  --panel-w:162px;  /* side-panel: D-1|D-2|D-3 split (86) + Attached (62) */
+  --att-w:0px;      /* its breakdown — widens with Rollovers */
+  --rat-w:0px;      /* Rollovers: Attached (62) */
+  --rsp-w:0px;      /* Rollovers: D-1|D-2|D-3 split (86) */
 }
 
 
@@ -84,20 +85,23 @@ body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-b
 .panel-toggle svg{display:block}
 
 /* the side rail: width animates; this is the ONLY thing that reflows the timeline */
-.aside-rail{flex:0 0 auto;width:0;overflow:hidden;transition:width .28s cubic-bezier(.4,0,.2,1)}
-.app-root.panel-open .aside-rail{width:var(--panel-w)}
+
 /* Rollovers is one toggle over two places: the Attac./tot column in the left
    rail and the D-1|D-2|D-3 panel. The column animates to zero width rather than
    unmounting, so the rail reflows in step with the panel instead of snapping. */
-.app-root.panel-open{--left-w:326px;--att-w:130px}
+.app-root.panel-open{--left-w:474px;--att-w:130px;--rat-w:62px;--rsp-w:86px}
 .left-rail{transition:flex-basis .28s cubic-bezier(.4,0,.2,1),width .28s cubic-bezier(.4,0,.2,1)}
 .att-col{width:var(--att-w);flex:none;overflow:hidden;white-space:nowrap;text-align:center;
   border-left:1px solid var(--color-divider);
   transition:width .28s cubic-bezier(.4,0,.2,1),border-left-width .28s}
-.app-root:not(.panel-open) .att-col{border-left-width:0}
+.rat-col{width:var(--rat-w);flex:none;overflow:hidden;white-space:nowrap;text-align:center;
+  border-left:1px solid var(--color-divider);transition:width .28s cubic-bezier(.4,0,.2,1),border-left-width .28s}
+.rsp-col{width:var(--rsp-w);flex:none;overflow:hidden;white-space:nowrap;text-align:center;
+  border-left:1px solid var(--color-divider);transition:width .28s cubic-bezier(.4,0,.2,1),border-left-width .28s}
+.app-root:not(.panel-open) .att-col,.app-root:not(.panel-open) .rat-col,.app-root:not(.panel-open) .rsp-col{border-left-width:0}
 .cap-col{width:var(--cap-w);flex:none;overflow:hidden;white-space:nowrap;text-align:center;
   border-left:1px solid var(--color-divider);transition:width .28s cubic-bezier(.4,0,.2,1)}
-@media (prefers-reduced-motion:reduce){.left-rail,.att-col,.cap-col,.aside-rail{transition:none}}
+@media (prefers-reduced-motion:reduce){.left-rail,.att-col,.cap-col,.rat-col,.rsp-col{transition:none}}
 
 /* section nav — menu button + left drawer with vertical tabs */
 .menu-btn{width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;
@@ -208,6 +212,12 @@ input.plan{width:100%;height:28px;text-align:center;font-size:14px;font-family:v
   color:var(--color-text);background:var(--color-neutral-100);border:1px solid transparent;
   border-radius:8px;padding:2px;caret-color:var(--color-accent)}
 input.plan:hover{border-color:var(--color-neutral-300)}
+/* a value changed since it was last committed keeps a light active tint until it is published or cancelled */
+input.plan.plan-edited{background:color-mix(in srgb,var(--color-active) 16%,var(--color-surface));border-color:color-mix(in srgb,var(--color-active) 55%,transparent)}
+input.plan.plan-err{border-color:var(--color-negative);background:color-mix(in srgb,var(--color-negative) 8%,var(--color-surface))}
+.plan-msg{position:absolute;top:calc(100% + 2px);left:50%;transform:translateX(-50%);z-index:20;white-space:nowrap;
+  font-size:11px;line-height:1.3;padding:3px 8px;border-radius:6px;background:var(--color-surface);color:var(--color-negative);
+  box-shadow:var(--shadow-md);pointer-events:none}
 input.plan:focus-visible{outline:2px solid var(--color-active);outline-offset:1px;border-color:var(--color-active)}
 /* no number entered yet — the template value shows through as helper text */
 input.plan.is-helper{color:var(--color-neutral-400)}
@@ -308,6 +318,7 @@ const App = {
     reduceOpen: false, reduceKey: null, reduceFrom: null, reduceTo: null,
     reduceChoice: null, reduceText: '',
     reduceReasons: {},   // key -> { from, to, reason }
+    planErrors: {},      // key -> booked count a field was left below (cleared on edit / cancel / publish)
     // header filter row
     filtersOpen: false, filterOpenId: null,
     filters: null,   // current selections; seeded on first build, and each pick takes effect at once
@@ -551,6 +562,17 @@ const App = {
 
   // ---- side panel: one card per YC (Cap. avail. + Rollovers) ----
   // Columns: cap(60) | attac/total(72) | split(86) = 218 inside a 220 card.
+  // collapsed card header: the day's rollovers for the whole centre, in the same columns the
+  // model rows use when it opens (the cap and declared columns are left blank)
+  rollSummary(yc, showRoll){
+    const r = this.aggRoll(this.visibleModels(yc));
+    const dash = h('span',{ style:{ color:'color-mix(in srgb, var(--color-text) 32%, transparent)' } }, '—');
+    const cell = (cls, txt)=> h('span',{ class:cls, style:{ fontSize:'13px', fontVariantNumeric:'tabular-nums',
+      alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } }, txt);
+    return h('div',{ class:'roll-sum', style:{ display:'flex', alignSelf:'stretch' } },
+      cell('rat-col', showRoll ? String(r.attac) : dash),
+      cell('rsp-col', showRoll ? r.split.join(' | ') : dash));
+  },
   panelCard(yc, rel, expanded){
     const muted = 'color-mix(in srgb, var(--color-text) 65%, transparent)';
     const showRoll = rel <= 0;         // rollovers are end-of-day actuals: today + past
@@ -814,10 +836,10 @@ const App = {
     const muted = 'color-mix(in srgb, var(--color-text) 55%, transparent)';
     const accent = 'var(--color-accent)';
     const isToday = rel === 0;
-    const raw = this.data(st[P.view]);
+    const isBiz = st[P.view]==='business';
+    const raw = isBiz ? this.bizRows() : this.data(st[P.view]);
     const pivot = st[P.pivot];
     const selYc = raw.find(y=> y.id===st[P.yc]) || raw[0];
-    const isBiz = st[P.view]==='business';
     const bizYc = this.SLOT_YC.find(y=> y.id===st.dailyBizYc) || this.SLOT_YC[0];
     const showNowMarker = (pivot==='weekday' && !isBiz) ? true : isToday;
     this._activeEdits = P.edits;
@@ -899,7 +921,8 @@ const App = {
       ref:(el)=>{ this._publishBtn = el; },
       onClick: ()=> twoStage ? this.openPublishDialog() : this.publishPlanner(P),
       style: (twoStage && !canPublish) ? { display:'none' } : null,
-      disabled: !canPublish, title:'Make these numbers live and open the slots to customers' },
+      disabled: !canPublish || (twoStage && this.invalidKeys().length>0),
+      title: (twoStage && this.invalidKeys().length) ? 'Some values are below what is already booked' : 'Make these numbers live and open the slots to customers' },
       twoStage ? publishLabel() : 'Publish');
 
     // a queued schedule stays visible without opening the dialogue
@@ -909,6 +932,11 @@ const App = {
       h('span',{ class:'dot' }),
       h('span',{}, 'Scheduled · '+this.schedLabel(st.schedule))) : null;
 
+    // Cancel sits left of the update button and drops every unpublished edit
+    const cancelBtn = h('button',{ class:'hdr-btn', title:'Discard the unpublished changes',
+      ref:(el)=>{ this._cancelBtn = el; },
+      style: (twoStage && tally && tally.pending>0) ? null : { display:'none' },
+      onClick: ()=> this.cancelEdits() }, 'Cancel');
     const publishedLabel = h('span',{
       style:{ position:'absolute', top:'100%', right:'0', marginTop:'4px',
       whiteSpace:'nowrap', fontSize:'12px', color:accent, transition:'opacity .2s',
@@ -922,8 +950,8 @@ const App = {
       this.productTitle(),
       headCenter,
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', justifySelf:'end' } },
-        isBiz ? this.labeledCtl('Select centre', headDropdown) : null,
         schedChip ? h('div',{ style:{ display:'flex', alignItems:'center', height:'38px' } }, schedChip) : null,
+        twoStage ? cancelBtn : null,
         h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, publishBtn, publishedLabel),
         twoStage ? this.buildMoreMenu(P) : null
       )
@@ -956,7 +984,6 @@ const App = {
         alignItems:'flex-end', paddingBottom:'2px', fontSize:'14px', fontWeight:'500' } }, 'Time of the day:'),
       h('div',{ class:'tl-ruler', ref:(el)=>{this._rulerEl=el;},
         style:{ flex:'1 1 auto', minWidth:'0', overflow:'hidden', margin:'0 10px' } }, rulerTrack),
-      h('div',{ class:'aside-rail', style:{ height:'32px' } }),   // spacer matching the panel width
       panelBtn
     );
 
@@ -965,10 +992,7 @@ const App = {
 
     // ---- rows: YCs at one date (yc pivot) OR dates for one YC (weekday pivot) ----
     const statusFill = { past:'var(--color-accent-800)', live:'var(--color-accent)', future:'var(--color-accent-700)' };
-    const rowDefs = isBiz
-      ? raw.map(co=>({ yc: co, rel: st[P.dateRel], key: co.id,
-          titleNode: h('span',{ style:{ flex:'1', fontWeight:'500', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, co.name) }))
-      : pivot==='yc'
+    const rowDefs = (isBiz || pivot==='yc')
       ? raw.map(yc=>({ yc, rel: st[P.dateRel], key: yc.id,
           titleNode: h('span',{ style:{ flex:'1', fontWeight:'500', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, yc.name) }))
       : [-3,-2,-1,0,1,2,3].map(r=>{ const dt=new Date(base); dt.setDate(base.getDate()+r); const today=r===0, past=r<0;
@@ -977,7 +1001,7 @@ const App = {
               h('span',{ style:{ fontWeight:'500', color: today?accent:'var(--color-text)' } }, DOW[dt.getDay()]+' '+dt.getDate()),
               h('span',{ style:{ fontSize:'11px', color: today?accent:muted } }, today?'Today':(past?'Past':'Future'))) }; });
 
-    const leftCards = [], midBlocks = [], panelCards = [];
+    const leftCards = [], midBlocks = [];
     const _slotSpans = [];
 
     rowDefs.forEach((rd,ycIdx)=>{
@@ -985,14 +1009,7 @@ const App = {
       // Business: one slot per company = the selected YC's operating hours.
       // People: slots come from Slot creation (shared truth), by the date's weekday.
       let slots, bizSpan = null;
-      if(isBiz){
-        // The bar spans the whole operating window (breaks drawn inside it), but the
-        // single table below no longer stretches to match — it sits compact at the
-        // start of the window, wide enough for its three columns and no wider.
-        bizSpan = [bizYc.op[0], bizYc.op[1]];
-        const tblEnd = Math.min(bizYc.op[1], bizYc.op[0] + this.BIZ_TABLE_W / HW);
-        slots = [[1, bizYc.op[0], tblEnd]];
-      } else {
+      {
         const _scy = this.SLOT_YC.find(y=> y.id===yc.id);
         if(_scy){ const wk = this.wkKeyForRel(rel);
           slots = (_scy.closed.indexOf(wk)!==-1) ? [] : this.getSlots(wk, _scy).map((s,idx)=>[idx+1, s.start, s.end, !!s.blocked]); }
@@ -1020,7 +1037,9 @@ const App = {
         fontSize:'10px', fontWeight:'500', letterSpacing:'.02em', color:capMuted } },
         h('div',{ style:{ flex:'1', minWidth:'0', paddingLeft:'16px' } }, 'Bike models'),
         h('div',{ class:'cap-col' }, 'Total capacity'),
-        h('div',{ class:'att-col' }, 'Declared cap. + Rollover')
+        h('div',{ class:'att-col' }, 'Declared cap. + Rollover'),
+        h('div',{ class:'rat-col' }, 'Attached'),
+        h('div',{ class:'rsp-col' }, 'D‑1 | D‑2 | D‑3')
       ) : null;
       const modelLabelRows = expanded ? this.visibleModels(yc).map((mod)=>
         h('div',{ hover:{ background:'color-mix(in srgb, var(--color-text) 4%, transparent)' },
@@ -1037,7 +1056,13 @@ const App = {
           h('span',{ class:'att-col', style:{ fontSize:'13px', fontVariantNumeric:'tabular-nums',
             alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } },
             this.declaredCapacity(yc, mod, rel, slots, P) + ' + '
-              + ((rollShow && mod.roll) ? mod.roll.total : 0))
+              + ((rollShow && mod.roll) ? mod.roll.total : 0)),
+          h('span',{ class:'rat-col', style:{ fontSize:'13px', fontVariantNumeric:'tabular-nums',
+            alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } },
+            rollShow ? String(mod.roll.attac) : attDash),
+          h('span',{ class:'rsp-col', style:{ fontSize:'13px', fontVariantNumeric:'tabular-nums',
+            alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center' } },
+            rollShow ? mod.roll.split.join(' | ') : attDash)
         )
       ) : null;
 
@@ -1045,10 +1070,11 @@ const App = {
         borderRadius:'8px', overflow:'hidden', background:'var(--color-surface)', boxShadow:'0 1px 2px rgba(0,0,0,.05)' } },
         h('div',{ onClick:onToggle, hover:{ background:'var(--color-neutral-200)' },
           style:{ height:this.collapsedH+'px', display:'flex',
-          alignItems:'center', gap:'10px', padding:'0 12px', background:'var(--color-neutral-900)',
+          alignItems:'center', gap:'10px', padding:'0 0 0 12px', background:'var(--color-neutral-900)',
           cursor:'pointer', userSelect:'none' } },
           this.iconEl(expanded?'arrowUp':'arrowDown', 'var(--color-text-2)'),
-          rd.titleNode
+          rd.titleNode,
+          expanded ? null : this.rollSummary(yc, rollShow)
         ),
         subSpacer,
         modelLabelRows
@@ -1073,7 +1099,7 @@ const App = {
             background: s[3] ? 'repeating-linear-gradient(45deg, color-mix(in srgb,var(--color-text) 6%,transparent) 0 6px, transparent 6px 12px), var(--color-surface)' : fill,
             color:'var(--color-text)', border:'1px solid var(--color-neutral-600)',
             borderRadius:'6px', cursor:'pointer' } },
-          h('span',{ style:{ fontWeight:'700', fontSize:'13px' } }, isBiz ? 'Operating hours' : 'Slot '+s[0]),
+          h('span',{ style:{ fontWeight:'700', fontSize:'13px' } }, 'Slot '+s[0]),
           w>60 ? h('span',{ style:{ fontSize:'11px', color:'var(--color-text-2)' } }, this.hhmm(s[1])+'–'+this.hhmm(s[2])) : null
         );
       });
@@ -1120,7 +1146,8 @@ const App = {
           const cells = slots.map(s=>{
             if(s[3]) return null;        // Blocked: nothing to enter for this slot
             const status = this.slotStatus(s, rel);
-            const editable = status==='future';
+            // the slot the clock is in stays editable; only slots already over are read-only
+            const editable = status!=='past';
             const v = mod.vals[s[0]] || [0,0,0];
             const key = st[P.view]+'|'+rel+'|'+yc.id+'|'+mod.key+'|'+s[0];
             // today and tomorrow carry planned numbers; D+2 onward is still open for planning
@@ -1134,39 +1161,13 @@ const App = {
             const attShow = status!=='future';
             // no planned number = the slot was never open, so no one could book it
             const unplannedCell = editable && planned === '';
-            const bookedShown = unplannedCell ? '0' : String(v[1]);
+            const booked = this.bookedFor(key);
+            const bookedShown = (unplannedCell || rel >= 2) ? '0' : String(v[1]);
 
             let plannedNode;
             if(editable){
-              const tplVal = twoStage ? this.tplValueFor(yc.id, rel, s[1], mod.key) : '';
-              const inp = h('input',{ class:'plan'+(planned===''?' is-helper':''),
-                type:'text', inputmode:'numeric',
-                // the template number sits in the field as helper text until a
-                // value is entered, per the reference
-                placeholder: (twoStage && tplVal!=='') ? tplVal : '—', value: planned });
-              const restyle = (val)=>{ inp.classList.toggle('is-helper', val===''); };
-              // the template number is offered as helper text once the field has
-              // focus; → accepts it, so a planner can walk the row with one hand
-              if(tplVal !== ''){
-                inp.addEventListener('keydown', (e)=>{
-                  if(e.key !== 'ArrowRight' || inp.value !== '') return;
-                  e.preventDefault();
-                  inp.value = tplVal;
-                  this.state[P.edits] = Object.assign({}, this.state[P.edits], {[key]: tplVal});
-                  restyle(tplVal);
-                  this._refreshPublish();
-                });
-              }
-              inp.addEventListener('input', (e)=>{
-                const val = e.target.value.replace(/[^0-9]/g,'').slice(0,4);
-                e.target.value = val;
-                this.state[P.edits] = Object.assign({}, this.state[P.edits], {[key]: val});
-                restyle(val);
-                this._refreshPublish();
-              });
-              // leaving the field with a number below the last committed one asks why
-              if(twoStage) inp.addEventListener('blur', ()=> this.checkReduction(key, inp.value));
-              plannedNode = h('div',{ class:'plan-cell' }, inp);
+              const tplVal = (twoStage && !isBiz) ? this.tplValueFor(yc.id, rel, s[1], mod.key) : '';
+              plannedNode = this.planCell(key, { planned, tplVal, booked });
             } else {
               plannedNode = h('span',{}, planned);
             }
@@ -1203,7 +1204,6 @@ const App = {
         bandChildren, rowNowMarker));
 
       // ===== side PANEL card =====
-      panelCards.push(this.panelCard(yc, rel, expanded));
     });
 
     // ---- main columns ----
@@ -1224,13 +1224,8 @@ const App = {
         h('div',{ style:{ height:'16px' } }), midBlocks)
     );
 
-    const panel = h('div',{ class:'aside-rail' },
-      h('div',{ style:{ width:'var(--panel-w)' } },
-        h('div',{ style:{ height:'16px' } }), panelCards)
-    );
-
     const main = h('div',{ style:{ display:'flex', alignItems:'flex-start', padding:'0 16px 40px' } },
-      leftRail, middle, panel);
+      leftRail, middle);
 
     return h('div',{ class:'app-root'+(st.panelOpen?' panel-open':''),
       ref:(el)=>{ this._rootEl = el; },
@@ -1249,8 +1244,11 @@ const App = {
       const t = this.planTally();
       if(this._publishBtn && this._publishBtn.isConnected){
         const n = t.pending + t.queued;
-        this._publishBtn.toggleAttribute('disabled', !t.canPublish);
-        this._publishBtn.classList.toggle('armed', t.canPublish);
+        const bad = this.invalidKeys().length > 0;
+        this._publishBtn.toggleAttribute('disabled', !t.canPublish || bad);
+        this._publishBtn.title = bad ? 'Some values are below what is already booked' : 'Make these numbers live and open the slots to customers';
+        this._publishBtn.classList.toggle('armed', t.canPublish && !bad);
+        if(this._cancelBtn && this._cancelBtn.isConnected) this._cancelBtn.style.display = t.pending>0 ? '' : 'none';
         this._publishBtn.style.display = t.canPublish ? '' : 'none';
         this._publishBtn.textContent = 'Update '+n+' slot value'+(n===1?'':'s');
       }
@@ -1278,6 +1276,7 @@ const App = {
       if(cur === undefined) return;
       if(pub !== undefined){ if(cur !== pub) pending++; return; }   // live, then changed
       if(cur === '') return;                                         // nothing entered
+      if(sav === undefined && cur === this.committedValue(k)) return;   // same as what the day already carries
       if(sav !== undefined && cur === sav) queued++; else pending++;
     });
     return { pending, queued, canPublish: pending>0 || queued>0 };
@@ -1308,6 +1307,8 @@ const App = {
     cat:     { id:'cat',     label:'Bike Category', opts:['ALL','Dex NV','Dex GR','Miracle'] },
     // Placeholder: the groups are not defined yet, so ALL is the only option and
     // nothing reads it. It counts toward neither the badge nor Apply.
+    // Business plans one company across every YC, so it picks the company after City
+    company: { id:'company', label:'Company', opts:['Amazon','Flipkart','Zepto','BigBasket','Dunzo'] },
     billing: { id:'billing', label:'Bike Billing Group', opts:['ALL'] },
   },
   // Slot creation plans one centre at a time and has no bike split, so it drops
@@ -1317,7 +1318,9 @@ const App = {
     templates: ['city','cluster','centre','cat'],
   },
   filtersFor(section){
-    const ids = this.SECTION_FILTERS[section || this.state.section] || this.SECTION_FILTERS.daily;
+    const sec = section || this.state.section;
+    let ids = (this.SECTION_FILTERS[sec] || this.SECTION_FILTERS.daily).slice();
+    if(sec !== 'templates' && this.state.view === 'business') ids.splice(ids.indexOf('city')+1, 0, 'company');
     return ids.map(id=>{
       const f = this.FILTER_DEFS[id];
       return f.id==='centre' ? Object.assign({}, f, { opts: this.SLOT_YC.map(y=> y.name) }) : f;
@@ -1458,10 +1461,118 @@ const App = {
     { id:'spare',  label:'Spare part storage' },
     { id:'other',  label:'Other' },
   ],
-  planBaseline(key){
+  // Business models carry vals for a company's own slots; every YC has its own slot
+  // count, so the numbers cycle to cover however many slots a YC has.
+  bizVals(vals){
+    const n = Object.keys(vals).length, o = {};
+    for(let i=1;i<=8;i++) o[i] = vals[((i-1)%n)+1];
+    return o;
+  },
+  // one row per YC for the chosen company; the models are that company's, keys carry the company
+  bizRows(){
+    const cos = this.data('business');
+    const co = cos.find(c=> c.name === (this.state.filters && this.state.filters.company)) || cos[0];
+    return this.SLOT_YC.map(y=>({ id:y.id, name:y.name, slots:[],
+      models: co.models.map(mo=>({ key: co.id+':'+mo.key, label: mo.label, cap: mo.cap, roll: mo.roll, vals: this.bizVals(mo.vals) })) }));
+  },
+  // [planned, booked, attached] the design ships for a cell key, or null
+  seedVals(key){
+    const [view, rel, ycId, modKey, slot] = key.split('|');
+    if(view === 'business'){
+      const [coId, mk] = modKey.split(':');
+      const co = this.data('business').find(c=> c.id === coId);
+      const mo = co && co.models.find(m=> m.key === mk);
+      return (mo && this.bizVals(mo.vals)[slot]) || null;
+    }
+    const yc = this.data(view).find(y=> y.id === ycId);
+    const mo = yc && yc.models.find(m=> m.key === modKey);
+    return (mo && mo.vals[slot]) || null;
+  },
+  // what is already committed for a cell: published, parked behind a schedule, or the
+  // number the day already carries (today and tomorrow ship with planned numbers)
+  committedValue(key){
     const st = this.state;
-    const b = st.pubVals[key] !== undefined ? st.pubVals[key] : st.savedVals[key];
-    return (b === undefined || b === '') ? null : Number(b);
+    if(st.pubVals[key] !== undefined) return String(st.pubVals[key]);
+    if(st.savedVals[key] !== undefined) return String(st.savedVals[key]);
+    const rel = Number(key.split('|')[1]);
+    const v = rel < 2 ? this.seedVals(key) : null;
+    return v ? String(v[0]) : '';
+  },
+  // bookings already taken against a cell; planned can never drop below this
+  bookedFor(key){
+    const rel = Number(key.split('|')[1]);
+    if(rel >= 2) return 0;
+    const v = this.seedVals(key);
+    return v ? Number(v[1]) || 0 : 0;
+  },
+  planBaseline(key){
+    const b = this.committedValue(key);
+    return b === '' ? null : Number(b);
+  },
+  // typed values that sit below their bookings — these cannot be published
+  invalidKeys(){
+    return Object.keys(this.state.edits).filter(k=>{
+      const raw = this.state.edits[k], booked = this.bookedFor(k);
+      return booked > 0 && (raw === '' ? 0 : Number(raw)) < booked;
+    });
+  },
+  // the Planned field: shared by the desktop grid and the mobile cards. It tints while
+  // it differs from what is committed, asks why on a reduction, and refuses to go
+  // under the booked count once the planner leaves the field.
+  planCell(key, o){
+    const P = this.DAILY_P, st = this.state;
+    const inp = h('input',{ class:'plan'+(o.planned===''?' is-helper':''), type:'text', inputmode:'numeric',
+      placeholder: o.tplVal ? o.tplVal : '—', value: o.planned });
+    const wrap = h('div',{ class:'plan-cell' }, inp);
+    const tint = (val)=>{
+      const mine = st.edits[key];
+      inp.classList.toggle('plan-edited', mine !== undefined && val !== this.committedValue(key));
+    };
+    const mark = (on)=>{
+      inp.classList.toggle('plan-err', on);
+      const old = wrap.querySelector('.plan-msg'); if(old) old.remove();
+      if(on) wrap.appendChild(h('div',{ class:'plan-msg' }, 'Can’t go below '+o.booked+' — already booked'));
+    };
+    tint(o.planned);
+    if(st.planErrors[key] !== undefined) mark(true);
+    const restyle = (val)=>{ inp.classList.toggle('is-helper', val===''); };
+    if(o.tplVal){
+      inp.addEventListener('keydown', (e)=>{
+        if(e.key !== 'ArrowRight' || inp.value !== '') return;
+        e.preventDefault();
+        inp.value = o.tplVal;
+        st.edits = Object.assign({}, st.edits, {[key]: o.tplVal});
+        restyle(o.tplVal); tint(o.tplVal);
+        this._refreshPublish();
+      });
+    }
+    inp.addEventListener('input', (e)=>{
+      const val = e.target.value.replace(/[^0-9]/g,'').slice(0,4);
+      e.target.value = val;
+      st.edits = Object.assign({}, st.edits, {[key]: val});
+      restyle(val); tint(val);
+      if(inp.classList.contains('plan-err')){ delete st.planErrors[key]; mark(false); }
+      this._refreshPublish();
+    });
+    inp.addEventListener('blur', ()=>{
+      const val = inp.value === '' ? 0 : Number(inp.value);
+      if(o.booked > 0 && val < o.booked){
+        st.planErrors[key] = o.booked; mark(true);
+      } else {
+        delete st.planErrors[key]; mark(false);
+        this.checkReduction(key, inp.value);
+      }
+      this._refreshPublish();
+    });
+    return wrap;
+  },
+  // drop every unpublished edit
+  cancelEdits(){
+    const st = this.state;
+    Object.keys(st.edits).forEach(k=> delete st.reduceReasons[k]);
+    st.edits = {}; st.planErrors = {};
+    this.persistNow();
+    this.setState({});
   },
   checkReduction(key, raw){
     if(this.state.reduceOpen) return;                 // already asking
@@ -1760,6 +1871,7 @@ const App = {
       Object.keys(st.edits).forEach(k=>{ st.pubVals[k] = st.edits[k]; });
       Object.keys(st.savedVals).forEach(k=>{ if(st.pubVals[k] === undefined) st.pubVals[k] = st.savedVals[k]; });
       st.savedVals = {};
+      st.edits = {}; st.planErrors = {};
       this.persistNow();
       this.setState({ [P.published]:true });
     } else {
