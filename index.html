@@ -290,6 +290,10 @@ input.plan::placeholder{color:var(--color-neutral-400);opacity:1;font-weight:500
 .m-bottom{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
   background:color-mix(in srgb,var(--color-surface) 94%,transparent);border-top:1px solid var(--color-divider);backdrop-filter:blur(6px)}
 .m-bottom .hdr-btn{flex:1;height:46px}
+.sum-toast{position:fixed;right:20px;bottom:20px;z-index:60;display:flex;align-items:center;gap:14px;min-width:240px;
+  padding:14px 14px 14px 16px;background:var(--color-surface);border-radius:12px;box-shadow:var(--shadow-md);
+  border-left:4px solid var(--color-active)}
+@media (max-width:720px){.sum-toast{left:16px;right:16px;bottom:84px}}
 .m-note{margin:12px 16px 0;padding:12px;border:1px dashed var(--color-neutral-600);border-radius:10px;font-size:13px;color:var(--color-text-2)}
 .m-sched{margin:10px 16px 0}
 .m-scrim{position:fixed;inset:0;z-index:70;background:color-mix(in srgb,var(--color-text) 38%,transparent);display:flex;align-items:flex-end}
@@ -790,7 +794,7 @@ const App = {
     const upd = h('button',{ class:'hdr-btn'+((t.canPublish && !bad)?' armed':''), ref:(el)=>{ this._publishBtn = el; },
       disabled: !t.canPublish || bad,
       title: bad ? 'Some values are below what is already booked' : '',
-      onClick: ()=> this.openPublishDialog() }, 'Update '+n+' slot value'+(n===1?'':'s'));
+      onClick: ()=> this.updateNow() }, 'Update '+n+' slot value'+(n===1?'':'s'));
     return h('div',{ class:'m-bottom', ref:(el)=>{ this._mBar = el; }, style: t.canPublish ? null : { display:'none' } }, cancel, upd);
   },
   mCard(P, r){
@@ -873,6 +877,7 @@ const App = {
       rows.map(r=> this.mCard(P, r)),
       this.mActionBar(P),
       this.mSheet(),
+      this.buildSummary(),
       st.reduceOpen ? this.buildReduceDialog()
         : (st.pubOpen ? this.buildPublishDialog(P) : (st.uploadOpen ? this.buildUploadDialog() : null)));
   },
@@ -1224,7 +1229,7 @@ const App = {
     const publishLabel = ()=>{ const n = this.pendingCount(); return 'Update '+n+' slot value'+(n===1?'':'s'); };
     const publishBtn = h('button',{ class:'hdr-btn'+(canPublish?' armed':''),
       ref:(el)=>{ this._publishBtn = el; },
-      onClick: ()=> twoStage ? this.openPublishDialog() : this.publishPlanner(P),
+      onClick: ()=> twoStage ? this.updateNow() : this.publishPlanner(P),
       style: (twoStage && !canPublish) ? { display:'none' } : null,
       disabled: !canPublish || (twoStage && this.invalidKeys().length>0),
       title: (twoStage && this.invalidKeys().length) ? 'Some values are below what is already booked' : 'Make these numbers live and open the slots to customers' },
@@ -1257,7 +1262,7 @@ const App = {
       h('div',{ style:{ display:'flex', alignItems:'flex-end', gap:'12px', justifySelf:'end' } },
         schedChip ? h('div',{ style:{ display:'flex', alignItems:'center', height:'38px' } }, schedChip) : null,
         twoStage ? cancelBtn : null,
-        h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, publishBtn, publishedLabel),
+        h('div',{ style:{ position:'relative', display:'flex', alignItems:'flex-end' } }, publishBtn),
         twoStage ? this.buildMoreMenu(P) : null
       )
     );
@@ -1536,6 +1541,7 @@ const App = {
       ref:(el)=>{ this._rootEl = el; },
       style:{ minHeight:'100vh', background:'var(--color-bg)', color:'var(--color-text)', fontSize:'14px' } },
       topBar, main,
+      this.buildSummary(),
       st.reduceOpen ? this.buildReduceDialog()
         : (st.pubOpen ? this.buildPublishDialog(P)
         : (st.uploadOpen ? this.buildUploadDialog() : null)));
@@ -2087,6 +2093,35 @@ const App = {
   // how many pending values this submission covers
   pendingCount(){ const t = this.planTally(); return t.pending + t.queued; },
 
+  // Update goes live straight away (no schedule for now) and reports what changed:
+  // a value that had nothing before is created, one cleared to nothing is deleted,
+  // anything else that moved is updated.
+  updateNow(){
+    const st = this.state;
+    let updated = 0, created = 0, deleted = 0;
+    Object.keys(st.edits).forEach(k=>{
+      const cur = st.edits[k], was = this.committedValue(k);
+      if(cur === was) return;
+      if(was === '') created++; else if(cur === '') deleted++; else updated++;
+    });
+    st.schedule = null;
+    this.publishPlanner(this.DAILY_P);
+    this.setState({ pubSummary:{ updated, created, deleted } });
+    clearTimeout(this._sumT);
+    this._sumT = setTimeout(()=> this.setState({ pubSummary:null }), 9000);
+  },
+  buildSummary(){
+    const m = this.state.pubSummary; if(!m) return null;
+    const n = (x, w)=> x+' '+w+(x===1?'':'s');
+    return h('div',{ class:'sum-toast', role:'status' },
+      h('div',{ style:{ flex:'1' } },
+        h('div',{ style:{ fontWeight:'700', fontFamily:'var(--font-heading)' } }, n(m.updated,'slot value')+' updated'),
+        h('div',{ style:{ color:'var(--color-text-2)', fontSize:'13px', marginTop:'2px' } },
+          m.created+' created · '+m.deleted+' deleted')),
+      h('button',{ class:'menu-btn', style:{ width:'30px', height:'30px' }, 'aria-label':'Dismiss',
+        onClick: ()=> this.setState({ pubSummary:null }),
+        html:'<svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg>' }));
+  },
   confirmPublishNow(P){
     // publishing now supersedes anything queued
     this.state.schedule = null;
