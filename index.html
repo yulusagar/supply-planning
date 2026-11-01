@@ -1865,6 +1865,8 @@ const App = {
       if(inp.classList.contains('plan-err')){ delete st.planErrors[key]; mark(false); }
       this._refreshPublish();
     });
+    // Enter commits the field the same way leaving it does
+    inp.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
     inp.addEventListener('blur', ()=>{
       const val = inp.value === '' ? 0 : Number(inp.value);
       if(o.booked > 0 && val < o.booked){
