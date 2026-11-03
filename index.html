@@ -2124,12 +2124,11 @@ const App = {
   },
   buildSummary(){
     const m = this.state.pubSummary; if(!m) return null;
-    const n = (x, w)=> x+' '+w+(x===1?'':'s');
+    // every changed value counts, whether it was updated, created or cleared
+    const t = m.updated + m.created + m.deleted;
     return h('div',{ class:'sum-toast', role:'status' },
-      h('div',{ style:{ flex:'1' } },
-        h('div',{ style:{ fontWeight:'700', fontFamily:'var(--font-heading)' } }, n(m.updated,'slot value')+' updated'),
-        h('div',{ style:{ color:'var(--color-text-2)', fontSize:'13px', marginTop:'2px' } },
-          m.created+' created · '+m.deleted+' deleted')),
+      h('div',{ style:{ flex:'1', fontWeight:'700', fontFamily:'var(--font-heading)' } },
+        t+' slot value'+(t===1?' is':'s are')+' updated'),
       h('button',{ class:'menu-btn', style:{ width:'30px', height:'30px' }, 'aria-label':'Dismiss',
         onClick: ()=> this.setState({ pubSummary:null }),
         html:'<svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg>' }));
