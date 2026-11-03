@@ -1631,7 +1631,11 @@ const App = {
   filtersFor(section){
     const sec = section || this.state.section;
     let ids = (this.SECTION_FILTERS[sec] || this.SECTION_FILTERS.daily).slice();
-    if(sec !== 'templates' && this.state.view === 'business') ids.splice(ids.indexOf('city')+1, 0, 'company');
+    // Business plans one company across every YC, so Company replaces Cluster
+    if(sec !== 'templates' && this.state.view === 'business'){
+      ids = ids.filter(id=> id !== 'cluster');
+      ids.splice(ids.indexOf('city')+1, 0, 'company');
+    }
     return ids.map(id=>{
       const f = this.FILTER_DEFS[id];
       return f.id==='centre' ? Object.assign({}, f, { opts: this.SLOT_YC.map(y=> y.name) }) : f;
