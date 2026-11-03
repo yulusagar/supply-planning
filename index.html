@@ -2519,6 +2519,8 @@ const App = {
             const setRng = (el,w,s,e)=>{ const r=el.querySelector('.sc-rng');
               if(r) r.textContent = w>60 ? this.hhmm(s)+'–'+this.hhmm(e) : (w>34 ? this.hhmm(s) : ''); };
             const move = (ev)=>{
+              // the button was released somewhere we never saw (outside the pane, another window): end the drag
+              if(ev.buttons === 0){ up(); return; }
               let t = this.snap15((ev.clientX-rect.left)/HW);
               t = Math.max(lo, Math.min(hi, t));
               curT = t;
@@ -2530,8 +2532,10 @@ const App = {
               wrap.style.left = (t*HW-7)+'px';
             };
             const up = ()=>{
+              if(!this._scDragging) return;
               document.removeEventListener('mousemove', move);
               document.removeEventListener('mouseup', up);
+              window.removeEventListener('blur', up);
               this._scDragging = false;
               this._scSuppressClick = true; setTimeout(()=>{ this._scSuppressClick=false; }, 0);
               if(Math.abs(curT - slots[li].end) > 1e-9){
@@ -2543,6 +2547,7 @@ const App = {
             };
             document.addEventListener('mousemove', move);
             document.addEventListener('mouseup', up);
+            window.addEventListener('blur', up);
           });
           mb.addEventListener('click',(e)=>{
             e.stopPropagation();
@@ -2903,6 +2908,7 @@ const App = {
   },
   render(){
     const root = document.getElementById('root');
+    this._scDragging = false;
     const prevX = this._scrollEl ? this._scrollEl.scrollLeft : null;
     root.replaceChildren(this.build());
     if(this.fitTimeline()) return;   // re-rendered at the fitted hour width
