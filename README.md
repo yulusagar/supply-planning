@@ -45,3 +45,10 @@ Open `index.html` directly, or serve it (localStorage is more reliable over http
 ## Mobile (up to 720px wide)
 
 A separate layout, not the desktop squeezed down: day strip, filter chips that open a bottom sheet, centres as stacked cards with capacity and slot blocks (Live / Done / Upcoming), dialogs as bottom sheets, and a pinned Cancel / Update bar. Editing slot times (slice, merge, resize) stays desktop-only.
+
+## Filters: scope and Unplanned only
+
+- **City** and **Cluster** are multi-select (tick several; at least one stays ticked). Only YCs in the ticked cities and clusters are shown. Business ignores Cluster.
+- When the view spans more than one city or cluster, YCs are grouped under headings: the city, the cluster, or "City · Cluster".
+- **Unplanned only** (switch after Bike Billing Group, Day-to-day only) keeps just the rows with a slot that can still be planned and is empty in what's already committed. Those rows open by default; turning it off puts the accordions back. Rows stay until their update is published.
+- The sample data now includes YCs in Delhi NCR, Mumbai and Pune.
