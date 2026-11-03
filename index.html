@@ -761,6 +761,9 @@ const App = {
     const chips = this.mFilterDefs().map(f=> h('button',{ class:'m-chip', onClick: ()=> this.setState({ filterOpenId:f.id }) },
       h('span',{ class:'txt' }, h('span',{ class:'k' }, f.label), h('span',{ class:'v' }, f.value)),
       this.iconEl('arrowDown', muted)));
+    // location filters, then a break, then the bike filters
+    const bi = this.mFilterDefs().findIndex(f=> f.id==='cat');
+    if(bi > 0) chips.splice(bi, 0, h('div',{ style:{ flex:'none', width:'1px', margin:'4px 4px', background:'var(--color-neutral-300)' } }));
     if(withRoll) chips.push(h('button',{ class:'m-chip ico'+(st.panelOpen?' on':''), title:'Rollovers', 'aria-pressed':String(!!st.panelOpen),
       onClick: ()=> this.setState({ panelOpen: !st.panelOpen }), html: this.infoIcon(!!st.panelOpen) }));
     if(this.mResettable()) chips.push(h('button',{ class:'m-chip link', onClick: ()=> this.resetFilters() }, 'Reset'));
@@ -1712,7 +1715,7 @@ const App = {
   buildFilterRow(){
     const st = this.state;
     const cell = (f, i)=> this.scDropdown({ title: f.label, label: st.filters[f.id],
-        flat:true, edgeLeft:i===0, open: st.filterOpenId===f.id, minWidth:150,
+        flat:true, edgeLeft:i===0 || f.id==='cat', open: st.filterOpenId===f.id, minWidth:150,
         toggle: ()=> this.setState({ filterOpenId: st.filterOpenId===f.id ? null : f.id }),
         items: f.opts.map(o=>({ label:o, active: st.filters[f.id]===o,
           onClick: ()=> this.setFilter(f.id, o) })) });
@@ -1720,6 +1723,9 @@ const App = {
     // something to clear = anything off its default
     let resettable = this.FILTERS.some(f=> st.filters[f.id] !== def[f.id]);
     const cells = this.FILTERS.map(cell);
+    // Location filters and bike filters are two sets; a gap before Bike Category says so
+    const bikeAt = cells.findIndex((c,i)=> this.FILTERS[i] && this.FILTERS[i].id==='cat');
+    if(bikeAt > 0) cells.splice(bikeAt, 0, h('div',{ style:{ flex:'0 0 20px' } }));
     if(this.ycFilterShown()){
       const raw = this.data(st[this.DAILY_P.view]);
       const sel = raw.find(y=> y.id===st[this.DAILY_P.yc]) || raw[0];
