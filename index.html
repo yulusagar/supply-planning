@@ -294,6 +294,7 @@ input.plan::placeholder{color:var(--color-neutral-400);opacity:1;font-weight:500
   padding:14px 14px 14px 16px;background:var(--color-surface);border-radius:12px;box-shadow:var(--shadow-md);
   border-left:4px solid var(--color-active)}
 @media (max-width:720px){.sum-toast{left:16px;right:16px;bottom:84px}}
+.m-grp{margin:18px 16px 0;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-2)}
 .m-note{margin:12px 16px 0;padding:12px;border:1px dashed var(--color-neutral-600);border-radius:10px;font-size:13px;color:var(--color-text-2)}
 .m-sched{margin:10px 16px 0}
 .m-scrim{position:fixed;inset:0;z-index:70;background:color-mix(in srgb,var(--color-text) 38%,transparent);display:flex;align-items:flex-end}
@@ -307,6 +308,18 @@ input.plan::placeholder{color:var(--color-neutral-400);opacity:1;font-weight:500
   .modal-scrim{align-items:flex-end;padding:0}
   .modal{max-width:none;border-radius:16px 16px 0 0}
 }
+/* Unplanned-only switch, sitting in the filter strip like one more cell */
+.tg-cell{display:flex;align-items:center;gap:10px;height:48px;padding:0 14px;background:var(--color-surface);cursor:pointer;
+  border-left:1px solid var(--color-divider);border-right:1px solid var(--color-divider);font-size:14px;user-select:none}
+.tg-cell:hover{background:color-mix(in srgb,var(--color-text) 4%,var(--color-surface))}
+.tg{position:relative;flex:none;width:34px;height:20px;border-radius:10px;background:var(--color-neutral-400);transition:background .15s}
+.tg .knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+.tg.on{background:var(--color-active)}
+.tg.on .knob{transform:translateX(14px)}
+.grp-h{height:28px;margin:4px 0 10px;display:flex;align-items:center;font-size:12px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--color-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grp-sp{height:28px;margin:4px 0 10px;border-bottom:1px solid var(--color-divider)}
+.empty-state{margin:48px auto;text-align:center;color:var(--color-text-2);font-size:14px}
 </style>
 </head>
 <body>
@@ -391,6 +404,7 @@ const App = {
     reduceOpen: false, reduceKey: null, reduceFrom: null, reduceTo: null,
     reduceChoice: null, reduceText: '',
     reduceReasons: {},   // key -> { from, to, reason }
+    unplannedOnly: false, // Day-to-day: show only rows that still have something to plan
     planErrors: {},      // key -> booked count a field was left below (cleared on edit / cancel / publish)
     // header filter row
     filtersOpen: false, filterOpenId: null,
@@ -552,10 +566,10 @@ const App = {
         m('dex3','Dex GR',57,[4,18,10,5,3],{1:[34,20,12],2:[30,16,9],3:[28,12,7],4:[42,14,9]}),
         m('all','Miracle',41,[2,13,8,3,2],{1:[24,14,9],2:[22,10,6],3:[20,8,4],4:[30,9,6]}),
       ]},
-      {id:'mara',name:'Marathahalli YC',slots:[[1,10,12]],models:[
-        m('dex2','Dex NV',30,[2,9,5,3,1],{1:[20,8,5]}),
-        m('dex3','Dex GR',19,[1,6,4,1,1],{1:[16,6,4]}),
-        m('all','Miracle',12,[1,4,3,1,0],{1:[10,4,3]}),
+      {id:'mara',name:'Marathahalli YC',slots:[[1,8,13],[2,14,20]],models:[
+        m('dex2','Dex NV',30,[2,9,5,3,1],{1:[20,8,5],2:[22,9,6]}),
+        m('dex3','Dex GR',19,[1,6,4,1,1],{1:[16,6,4],2:[14,5,3]}),
+        m('all','Miracle',12,[1,4,3,1,0],{1:[10,4,3],2:[10,3,2]}),
       ]},
       {id:'white',name:'Whitefield YC (24×7)',slots:[[1,0,6],[2,6,12],[3,12,18],[4,18,24]],models:[
         m('dex2','Dex NV',140,[7,30,15,10,5],{1:[70,40,28],2:[90,52,34],3:[100,48,30],4:[80,30,18]}),
@@ -566,6 +580,36 @@ const App = {
         m('dex2','Dex NV',66,[3,16,9,5,2],{1:[52,28,20],2:[44,19,12]}),
         m('dex3','Dex GR',48,[2,11,7,3,1],{1:[40,20,14],2:[34,12,8]}),
         m('all','Miracle',33,[1,7,4,2,1],{1:[28,15,10],2:[24,8,5]}),
+      ]},
+      {id:'gur',name:'Sector 29 Gurgaon YC',slots:[[1,6,13],[2,14,22]],models:[
+        m('dex2','Dex NV',70,[4,18,9,6,3],{1:[46,26,18],2:[50,24,15]}),
+        m('dex3','Dex GR',50,[3,13,7,4,2],{1:[34,18,12],2:[38,20,13]}),
+        m('all','Miracle',34,[2,9,5,3,1],{1:[22,12,8],2:[26,13,9]}),
+      ]},
+      {id:'noi',name:'Noida Sector 62 YC',slots:[[1,7,13],[2,14,21]],models:[
+        m('dex2','Dex NV',58,[3,15,8,5,2],{1:[38,20,13],2:[42,19,12]}),
+        m('dex3','Dex GR',41,[2,10,6,3,1],{1:[28,14,9],2:[30,15,10]}),
+        m('all','Miracle',27,[1,7,4,2,1],{1:[18,9,6],2:[20,10,7]}),
+      ]},
+      {id:'andh',name:'Andheri West YC',slots:[[1,6,14],[2,15,22]],models:[
+        m('dex2','Dex NV',82,[5,20,10,6,4],{1:[54,30,22],2:[58,28,18]}),
+        m('dex3','Dex GR',55,[3,14,8,4,2],{1:[36,20,14],2:[40,21,15]}),
+        m('all','Miracle',37,[2,10,6,3,1],{1:[24,13,9],2:[28,14,10]}),
+      ]},
+      {id:'pow',name:'Powai YC',slots:[[1,8,20]],models:[
+        m('dex2','Dex NV',48,[3,13,7,4,2],{1:[48,22,15]}),
+        m('dex3','Dex GR',34,[2,9,5,3,1],{1:[34,15,10]}),
+        m('all','Miracle',22,[1,6,3,2,0],{1:[22,9,6]}),
+      ]},
+      {id:'kor',name:'Koregaon Park YC',slots:[[1,7,13],[2,14,21]],models:[
+        m('dex2','Dex NV',64,[4,16,8,5,3],{1:[42,23,16],2:[46,22,14]}),
+        m('dex3','Dex GR',46,[2,11,6,3,2],{1:[30,16,11],2:[32,17,12]}),
+        m('all','Miracle',30,[1,8,4,3,1],{1:[20,10,7],2:[22,11,8]}),
+      ]},
+      {id:'hin',name:'Hinjewadi YC',slots:[[1,6,12],[2,13,20]],models:[
+        m('dex2','Dex NV',52,[3,13,7,4,2],{1:[34,18,12],2:[36,17,11]}),
+        m('dex3','Dex GR',37,[2,9,5,3,1],{1:[24,12,8],2:[26,13,9]}),
+        m('all','Miracle',24,[1,6,3,2,1],{1:[16,8,5],2:[18,9,6]}),
       ]},
     ];
   },
@@ -739,21 +783,23 @@ const App = {
   // filter chips: the same filters the desktop strip shows, plus YC when grouped by YC
   mFilterDefs(){
     const st = this.state;
-    const defs = this.FILTERS.map(f=>({ id:f.id, label:f.label, value:st.filters[f.id], opts:f.opts,
-      pick:(o)=> this.setFilter(f.id, o) }));
+    const defs = this.FILTERS.map(f=>({ id:f.id, label:f.label, multi:!!f.multi,
+      value: f.multi ? this.selLabel(f) : st.filters[f.id], sel: f.multi ? st.filters[f.id] : [st.filters[f.id]], opts:f.opts,
+      pick: f.multi ? (o)=> this.toggleFilterOpt(f.id, o) : (o)=> this.setFilter(f.id, o) }));
     if(this.ycFilterShown()){
-      const raw = this.data(st[this.DAILY_P.view]);
+      const raw = this.scopedRows(st[this.DAILY_P.view]);
       const sel = raw.find(y=> y.id===st[this.DAILY_P.yc]) || raw[0];
+      if(!sel) return defs;
       const at = defs.findIndex(d=> d.id==='cluster') + 1;
-      defs.splice(at, 0, { id:'yc', label:'YC', value:sel.name, opts: raw.map(y=> y.name),
+      defs.splice(at, 0, { id:'yc', label:'YC', value:sel.name, sel:[sel.name], opts: raw.map(y=> y.name),
         pick:(o)=>{ const y = raw.find(r=> r.name===o); this.setState({ [this.DAILY_P.yc]: y.id, filterOpenId:null }); } });
     }
     return defs;
   },
   mResettable(){
     const st = this.state, def = this.defaultFilters();
-    let r = this.FILTERS.some(f=> st.filters[f.id] !== def[f.id]);
-    if(this.ycFilterShown()){ const raw = this.data(st[this.DAILY_P.view]); if(st[this.DAILY_P.yc] && st[this.DAILY_P.yc] !== raw[0].id) r = true; }
+    let r = this.FILTERS.some(f=> !this.sameSel(st.filters[f.id], def[f.id])) || (st.section !== 'templates' && !!st.unplannedOnly);
+    if(this.ycFilterShown()){ const raw = this.scopedRows(st[this.DAILY_P.view]); if(raw.length && st[this.DAILY_P.yc] && st[this.DAILY_P.yc] !== raw[0].id) r = true; }
     return r;
   },
   mChips(withRoll){
@@ -764,6 +810,14 @@ const App = {
     // location filters, then a break, then the bike filters
     const bi = this.mFilterDefs().findIndex(f=> f.id==='cat');
     if(bi > 0) chips.splice(bi, 0, h('div',{ style:{ flex:'none', width:'1px', margin:'4px 4px', background:'var(--color-neutral-300)' } }));
+    if(withRoll){
+      const on = !!st.unplannedOnly, n = this.unplannedCount();
+      chips.push(h('div',{ style:{ flex:'none', width:'1px', margin:'4px 4px', background:'var(--color-neutral-300)' } }));
+      chips.push(h('button',{ class:'m-chip'+(on?' on':''), role:'switch', 'aria-checked':String(on),
+        onClick: ()=> this.setUnplannedOnly(!on) },
+        h('span',{ class:'tg'+(on?' on':'') }, h('span',{ class:'knob' })),
+        h('span',{ class:'txt' }, h('span',{ class:'k' }, 'Unplanned only'), h('span',{ class:'v' }, n ? n+' to plan' : 'All planned'))));
+    }
     if(withRoll) chips.push(h('button',{ class:'m-chip ico'+(st.panelOpen?' on':''), title:'Rollovers', 'aria-pressed':String(!!st.panelOpen),
       onClick: ()=> this.setState({ panelOpen: !st.panelOpen }), html: this.infoIcon(!!st.panelOpen) }));
     if(this.mResettable()) chips.push(h('button',{ class:'m-chip link', onClick: ()=> this.resetFilters() }, 'Reset'));
@@ -777,8 +831,17 @@ const App = {
       h('div',{ class:'m-sheet' },
         h('div',{ class:'grab' }),
         h('div',{ class:'ttl' }, f.label),
-        f.opts.map(o=> h('div',{ class:'m-opt'+(o===f.value?' on':''), onClick: ()=> f.pick(o) },
-          h('span',{}, o), o===f.value ? h('span',{ class:'tick' }, '✓') : null))));
+        f.opts.map(o=>{
+          const on = f.sel.indexOf(o) !== -1;
+          return h('div',{ class:'m-opt'+(on && !f.multi?' on':''), onClick: ()=> f.pick(o) },
+            f.multi ? h('span',{ style:{ width:'20px', height:'20px', flex:'none', borderRadius:'5px', marginRight:'12px', display:'flex',
+              alignItems:'center', justifyContent:'center', color:'#fff',
+              border:'1px solid '+(on?'var(--color-active)':'var(--color-neutral-600)'), background: on?'var(--color-active)':'transparent' },
+              html: on ? '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 L6 10.5 L11 4"/></svg>' : '' }) : null,
+            h('span',{}, o), (!f.multi && on) ? h('span',{ class:'tick' }, '✓') : null);
+        }),
+        f.multi ? h('div',{ style:{ padding:'8px 4px 0' } }, h('button',{ class:'hdr-btn armed', style:{ width:'100%', height:'46px' },
+          onClick: ()=> this.setState({ filterOpenId:null }) }, 'Done')) : null));
   },
   mDayStrip(P){
     const st = this.state, rel = st[P.dateRel], DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], base = new Date();
@@ -802,12 +865,13 @@ const App = {
   },
   mCard(P, r){
     const st = this.state, yc = r.yc, rel = r.rel;
-    const expanded = !!st[P.expanded][r.key];
+    const expState = st[P.expanded][r.key];
+    const expanded = expState === undefined ? !!st.unplannedOnly : !!expState;
     const slots = this.slotsFor(yc, rel);
     const models = this.visibleModels(yc);
     const liveSlot = rel === 0 && slots.some(sl=> this.slotStatus(sl, rel)==='live');
     const rollShow = rel <= 0;
-    const toggle = ()=> this.setState(ss=>({ [P.expanded]: Object.assign({}, ss[P.expanded], {[r.key]: !ss[P.expanded][r.key]}) }));
+    const toggle = ()=> this.setState(ss=>({ [P.expanded]: Object.assign({}, ss[P.expanded], {[r.key]: !expanded}) }));
     const head = h('div',{ class:'m-card-h', onClick: toggle },
       this.iconEl(expanded?'arrowUp':'arrowDown', 'var(--color-text-2)'),
       h('span',{ class:'nm' }, r.title),
@@ -861,14 +925,29 @@ const App = {
     this.ensureFilters();
     this._activeEdits = P.edits;
     const rel = st[P.dateRel], isBiz = st[P.view]==='business', pivot = st[P.pivot];
-    const raw = isBiz ? this.bizRows() : this.data(st[P.view]);
+    const raw = this.scopedRows(st[P.view]);
     const selYc = raw.find(y=> y.id===st[P.yc]) || raw[0];
     const byDates = !(isBiz || pivot==='yc');
     const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], base = new Date();
-    const rows = byDates
+    let rows = !selYc ? [] : byDates
       ? [-3,-2,-1,0,1,2,3].map(r=>{ const dt = new Date(base); dt.setDate(base.getDate()+r);
           return { yc:selYc, rel:r, key:'d'+r, title: DOW[dt.getDay()]+' '+dt.getDate()+(r===0?' · Today':r<0?' · Past':'') }; })
       : raw.map(yc=>({ yc, rel, key:yc.id, title:yc.name }));
+    if(st.unplannedOnly) rows = rows.filter(r=> this.rowIsUnplanned(P, r.yc, r.rel));
+    if(!byDates){
+      const meta = (r)=> this.SLOT_YC.find(z=> z.id === r.yc.id) || {};
+      const multiCity = new Set(rows.map(r=> meta(r).city)).size > 1;
+      const multiCluster = !isBiz && new Set(rows.map(r=> meta(r).cluster)).size > 1;
+      rows.forEach(r=>{ const m = meta(r); r.grp = [multiCity ? m.city : null, multiCluster ? m.cluster : null].filter(Boolean).join(' · '); });
+    }
+    let lastGrp = null;
+    const cardsOut = [];
+    rows.forEach(r=>{
+      if(r.grp && r.grp !== lastGrp){ lastGrp = r.grp; cardsOut.push(h('div',{ class:'m-grp' }, r.grp)); }
+      cardsOut.push(this.mCard(P, r));
+    });
+    if(!rows.length) cardsOut.push(h('div',{ class:'m-note', style:{ borderStyle:'solid' } },
+      st.unplannedOnly ? 'Everything is planned for this selection.' : 'No YCs match these filters.'));
     const sched = st.schedule ? h('div',{ class:'m-sched' }, h('button',{ class:'sched-chip', style:{ border:'none', cursor:'pointer' },
       onClick: ()=> this.openPublishDialog() }, h('span',{ class:'dot' }), h('span',{}, 'Scheduled · '+this.schedLabel(st.schedule)))) : null;
     return h('div',{ class:'m-root' },
@@ -877,7 +956,7 @@ const App = {
         byDates ? null : this.mDayStrip(P),
         this.mChips(true)),
       sched,
-      rows.map(r=> this.mCard(P, r)),
+      cardsOut,
       this.mActionBar(P),
       this.mSheet(),
       this.buildSummary(),
@@ -1165,7 +1244,7 @@ const App = {
     const accent = 'var(--color-accent)';
     const isToday = rel === 0;
     const isBiz = st[P.view]==='business';
-    const raw = isBiz ? this.bizRows() : this.data(st[P.view]);
+    const raw = this.scopedRows(st[P.view]);
     const pivot = st[P.pivot];
     const selYc = raw.find(y=> y.id===st[P.yc]) || raw[0];
     const bizYc = this.SLOT_YC.find(y=> y.id===st.dailyBizYc) || this.SLOT_YC[0];
@@ -1320,7 +1399,7 @@ const App = {
 
     // ---- rows: YCs at one date (yc pivot) OR dates for one YC (weekday pivot) ----
     const statusFill = { past:'var(--color-accent-800)', live:'var(--color-accent)', future:'var(--color-accent-700)' };
-    const rowDefs = (isBiz || pivot==='yc')
+    let rowDefs = (isBiz || pivot==='yc')
       ? raw.map(yc=>({ yc, rel: st[P.dateRel], key: yc.id,
           titleNode: h('span',{ style:{ flex:'1', fontWeight:'500', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, yc.name) }))
       : [-3,-2,-1,0,1,2,3].map(r=>{ const dt=new Date(base); dt.setDate(base.getDate()+r); const today=r===0, past=r<0;
@@ -1329,11 +1408,29 @@ const App = {
               h('span',{ style:{ fontWeight:'500', color: today?accent:'var(--color-text)' } }, DOW[dt.getDay()]+' '+dt.getDate()),
               h('span',{ style:{ fontSize:'11px', color: today?accent:muted } }, today?'Today':(past?'Past':'Future'))) }; });
 
+    if(!selYc) rowDefs = [];
+    // only what still needs planning, when the switch is on
+    if(st.unplannedOnly) rowDefs = rowDefs.filter(rd=> selYc && this.rowIsUnplanned(P, rd.yc, rd.rel));
+    // YC rows get a heading wherever the view spans more than one city, or more than one cluster
+    if(isBiz || pivot==='yc'){
+      const meta = (rd)=> this.SLOT_YC.find(z=> z.id === rd.yc.id) || {};
+      const multiCity = new Set(rowDefs.map(rd=> meta(rd).city)).size > 1;
+      const multiCluster = !isBiz && new Set(rowDefs.map(rd=> meta(rd).cluster)).size > 1;
+      rowDefs.forEach(rd=>{ const m = meta(rd);
+        rd.grp = [multiCity ? m.city : null, multiCluster ? m.cluster : null].filter(Boolean).join(' · '); });
+    }
+
     const leftCards = [], midBlocks = [];
     const _slotSpans = [];
+    let _lastGrp = null;
 
     rowDefs.forEach((rd,ycIdx)=>{
       const yc = rd.yc, rel = rd.rel, rowKey = rd.key;
+      if(rd.grp && rd.grp !== _lastGrp){
+        _lastGrp = rd.grp;
+        leftCards.push(h('div',{ class:'grp-h' }, rd.grp));
+        midBlocks.push(h('div',{ class:'grp-sp' }));
+      }
       // Business: one slot per company = the selected YC's operating hours.
       // People: slots come from Slot creation (shared truth), by the date's weekday.
       let slots, bizSpan = null;
@@ -1345,11 +1442,13 @@ const App = {
       }
       (slots||[]).forEach(s=> _slotSpans.push(s[2]-s[1]));
       const isLast = ycIdx === rowDefs.length-1;
-      const expanded = !!st[P.expanded][rowKey];
+      // with Unplanned only on, rows start open: they all have something to plan
+      const expState = st[P.expanded][rowKey];
+      const expanded = expState === undefined ? !!st.unplannedOnly : !!expState;
       // constant band height — expanding appends rows below instead of resizing this one
       const barBandH = this.collapsedH;
       const barTop = 10;
-      const onToggle = ()=> this.setState(ss=>({ [P.expanded]: Object.assign({}, ss[P.expanded], {[rowKey]: !ss[P.expanded][rowKey]}) }));
+      const onToggle = ()=> this.setState(ss=>({ [P.expanded]: Object.assign({}, ss[P.expanded], {[rowKey]: !expanded}) }));
 
       // ===== LEFT rail card (name + model labels + available capacity) =====
       const panelOpen = !!st.panelOpen;
@@ -1552,8 +1651,10 @@ const App = {
         h('div',{ style:{ height:'16px' } }), midBlocks)
     );
 
-    const main = h('div',{ style:{ display:'flex', alignItems:'flex-start', padding:'0 16px 40px' } },
-      leftRail, middle);
+    const emptyMsg = st.unplannedOnly ? 'Everything is planned for this selection.' : 'No YCs match these filters.';
+    const main = rowDefs.length
+      ? h('div',{ style:{ display:'flex', alignItems:'flex-start', padding:'0 16px 40px' } }, leftRail, middle)
+      : h('div',{ class:'empty-state' }, emptyMsg);
 
     return h('div',{ class:'app-root'+(st.panelOpen?' panel-open':''),
       ref:(el)=>{ this._rootEl = el; },
@@ -1630,8 +1731,9 @@ const App = {
   FILTER_DEFS: {
     // which fleet is being planned; Apply switches the Day-to-day view to match
     fleet:   { id:'fleet',   label:'Planning for',  opts:['Corporate','Business'] },
-    city:    { id:'city',    label:'City',          opts:['Bangalore','Delhi NCR','Mumbai','Pune'] },
-    cluster: { id:'cluster', label:'Cluster',       opts:['Cluster 1','Cluster 2','Cluster 3','ALL'] },
+    // city and cluster are multi-select: pick several to view their YCs together
+    city:    { id:'city',    label:'City',          opts:['Bangalore','Delhi NCR','Mumbai','Pune'], multi:true, plural:'cities' },
+    cluster: { id:'cluster', label:'Cluster',       opts:['Cluster 1','Cluster 2','Cluster 3'], multi:true, plural:'clusters' },
     centre:  { id:'centre',  label:'Select centre', opts:null },   // filled from SLOT_YC
     cat:     { id:'cat',     label:'Bike Category', opts:['ALL','Dex NV','Dex GR','Miracle'] },
     // Placeholder: the groups are not defined yet, so ALL is the only option and
@@ -1656,7 +1758,7 @@ const App = {
     }
     return ids.map(id=>{
       const f = this.FILTER_DEFS[id];
-      return f.id==='centre' ? Object.assign({}, f, { opts: this.SLOT_YC.map(y=> y.name) }) : f;
+      return f.id==='centre' ? Object.assign({}, f, { opts: this.centresInScope().map(y=> y.name) }) : f;
     });
   },
   get FILTERS(){ return this.filtersFor(); },
@@ -1664,9 +1766,89 @@ const App = {
     const o = {};
     Object.keys(this.FILTER_DEFS).forEach(id=>{
       const f = this.FILTER_DEFS[id];
-      o[id] = f.id==='centre' ? this.SLOT_YC[0].name : f.opts[0];
+      o[id] = f.id==='centre' ? this.SLOT_YC[0].name : (f.multi ? [f.opts[0]] : f.opts[0]);
     });
     return o;
+  },
+  // ---- multi-select + scope -------------------------------------------------
+  sameSel(a, b){
+    if(Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every(x=> b.indexOf(x) !== -1);
+    return a === b;
+  },
+  selLabel(f){
+    const v = this.state.filters[f.id];
+    if(!Array.isArray(v)) return v;
+    if(v.length === 1) return v[0];
+    return v.length === f.opts.length ? 'All '+f.plural : v[0]+' +'+(v.length-1);
+  },
+  // a YC is in view when its city (and, outside Business, its cluster) is ticked
+  inScope(y, noCluster){
+    const f = this.state.filters, m = this.SLOT_YC.find(z=> z.id === y.id);
+    if(!f || !m) return true;
+    if(Array.isArray(f.city) && f.city.indexOf(m.city) === -1) return false;
+    if(!noCluster && Array.isArray(f.cluster) && f.cluster.indexOf(m.cluster) === -1) return false;
+    return true;
+  },
+  centresInScope(){
+    const r = this.SLOT_YC.filter(y=> this.inScope(y, false));
+    return r.length ? r : this.SLOT_YC;
+  },
+  // the YCs on screen for a view, ordered city then cluster so headings can group them
+  scopedRows(view){
+    const biz = view === 'business';
+    const raw = biz ? this.bizRows() : this.data(view);
+    const cities = this.FILTER_DEFS.city.opts, clusters = this.FILTER_DEFS.cluster.opts;
+    const meta = (y)=> this.SLOT_YC.find(z=> z.id === y.id) || {};
+    return raw.map((y,i)=>({ y, i })).filter(o=> this.inScope(o.y, biz))
+      .sort((a,b)=>{
+        const ma = meta(a.y), mb = meta(b.y);
+        return (cities.indexOf(ma.city) - cities.indexOf(mb.city))
+          || (biz ? 0 : (clusters.indexOf(ma.cluster) - clusters.indexOf(mb.cluster)))
+          || (a.i - b.i);
+      }).map(o=> o.y);
+  },
+  toggleFilterOpt(id, opt){
+    const st = this.state, f = this.FILTER_DEFS[id];
+    const cur = st.filters[id].slice(), at = cur.indexOf(opt);
+    if(at > -1){ if(cur.length === 1) return; cur.splice(at, 1); } else cur.push(opt);
+    const patch = { filters: Object.assign({}, st.filters, { [id]: f.opts.filter(o=> cur.indexOf(o) > -1) }) };
+    this.setState(patch);
+    // Manage slots plans one centre; if the ticked cities/clusters drop it, move to the first left
+    if(st.section === 'templates'){
+      const list = this.centresInScope();
+      if(!list.some(y=> y.name === this.state.filters.centre)) this.setFilter('centre', list[0].name);
+    }
+  },
+  // While the toggle is on every row opens (they all have something to plan); turning it off puts the
+  // accordions back the way the planner had them.
+  setUnplannedOnly(on){
+    const P = this.DAILY_P, st = this.state;
+    if(on){ this._expBefore = st[P.expanded]; this.setState({ unplannedOnly:true, [P.expanded]:{} }); }
+    else { this.setState({ unplannedOnly:false, [P.expanded]: this._expBefore || st[P.expanded] }); this._expBefore = null; }
+  },
+  // ---- unplanned rows ----------------------------------------------------------
+  // A row is unplanned when a slot that can still be planned has an empty cell in what is
+  // already committed. Typing does not change this, so a row you are working on stays put
+  // until the update lands.
+  rowIsUnplanned(P, yc, rel){
+    if(rel < 0) return false;
+    const st = this.state, slots = this.slotsFor(yc, rel), models = this.visibleModels(yc);
+    for(const s of slots){
+      if(s[3] || this.slotStatus(s, rel) === 'past') continue;
+      for(const mod of models){
+        if(this.committedValue(st[P.view]+'|'+rel+'|'+yc.id+'|'+mod.key+'|'+s[0]) === '') return true;
+      }
+    }
+    return false;
+  },
+  unplannedCount(){
+    const P = this.DAILY_P, st = this.state;
+    this._now = this.nowHour();
+    const view = st[P.view], rel = st[P.dateRel];
+    const rows = this.scopedRows(view);
+    if(view === 'business' || st[P.pivot] === 'yc') return rows.filter(y=> this.rowIsUnplanned(P, y, rel)).length;
+    const sel = rows.find(y=> y.id === st[P.yc]) || rows[0];
+    return sel ? [-3,-2,-1,0,1,2,3].filter(r=> this.rowIsUnplanned(P, sel, r)).length : 0;
   },
   ensureFilters(){
     if(!this.state.filters) this.state.filters = this.defaultFilters();
@@ -1696,7 +1878,7 @@ const App = {
     const fleetShown = this.fleetFilterShown();
     if(!fleetShown) d.fleet = this.state.filters.fleet;
     const yc = this.SLOT_YC.find(y=> y.name === d.centre) || this.SLOT_YC[0];
-    const next = { filters:d, filterOpenId:null, tYc: yc.id, slotYc: yc.id };
+    const next = { filters:d, filterOpenId:null, tYc: yc.id, slotYc: yc.id, unplannedOnly:false };
     if(this.ycFilterShown()) next.dailyYc = null;
     if(fleetShown) next.view = 'people';
     this.setState(next);
@@ -1729,27 +1911,41 @@ const App = {
   },
   buildFilterRow(){
     const st = this.state;
-    const cell = (f, i)=> this.scDropdown({ title: f.label, label: st.filters[f.id],
-        flat:true, edgeLeft:i===0 || f.id==='cat', open: st.filterOpenId===f.id, minWidth:150,
+    const cell = (f, i)=> this.scDropdown({ title: f.label, label: f.multi ? this.selLabel(f) : st.filters[f.id],
+        flat:true, multi: !!f.multi, edgeLeft:i===0 || f.id==='cat', open: st.filterOpenId===f.id, minWidth:150,
         toggle: ()=> this.setState({ filterOpenId: st.filterOpenId===f.id ? null : f.id }),
-        items: f.opts.map(o=>({ label:o, active: st.filters[f.id]===o,
-          onClick: ()=> this.setFilter(f.id, o) })) });
+        items: f.opts.map(o=>({ label:o,
+          active: f.multi ? st.filters[f.id].indexOf(o) !== -1 : st.filters[f.id]===o,
+          onClick: f.multi ? ()=> this.toggleFilterOpt(f.id, o) : ()=> this.setFilter(f.id, o) })) });
     const def = this.defaultFilters();
     // something to clear = anything off its default
-    let resettable = this.FILTERS.some(f=> st.filters[f.id] !== def[f.id]);
+    let resettable = this.FILTERS.some(f=> !this.sameSel(st.filters[f.id], def[f.id])) || (st.section !== 'templates' && !!st.unplannedOnly);
     const cells = this.FILTERS.map(cell);
     // Location filters and bike filters are two sets; a gap before Bike Category says so
     const bikeAt = cells.findIndex((c,i)=> this.FILTERS[i] && this.FILTERS[i].id==='cat');
     if(bikeAt > 0) cells.splice(bikeAt, 0, h('div',{ style:{ flex:'0 0 20px' } }));
     if(this.ycFilterShown()){
-      const raw = this.data(st[this.DAILY_P.view]);
+      const raw = this.scopedRows(st[this.DAILY_P.view]);
       const sel = raw.find(y=> y.id===st[this.DAILY_P.yc]) || raw[0];
-      if(sel !== raw[0]) resettable = true;
+      if(sel && sel !== raw[0]) resettable = true;
       const at = this.FILTERS.findIndex(f=> f.id==='cluster') + 1;
-      cells.splice(at, 0, this.scDropdown({ title:'YC', label: sel.name, flat:true, open: st.filterOpenId==='yc', minWidth:150,
+      cells.splice(at, 0, this.scDropdown({ title:'YC', label: sel ? sel.name : '—', flat:true, open: st.filterOpenId==='yc', minWidth:150,
         toggle: ()=> this.setState({ filterOpenId: st.filterOpenId==='yc' ? null : 'yc' }),
-        items: raw.map(y=>({ label:y.name, active:y.id===sel.id,
+        items: raw.map(y=>({ label:y.name, active: !!sel && y.id===sel.id,
           onClick: ()=> this.setState({ [this.DAILY_P.yc]:y.id, filterOpenId:null }) })) }));
+    }
+    // Day-to-day only: shortlist the view to what still needs planning for the day
+    if(st.section !== 'templates'){
+      const on = !!st.unplannedOnly, n = this.unplannedCount();
+      cells.push(h('div',{ style:{ flex:'0 0 20px' } }));
+      cells.push(h('div',{ class:'tg-cell', role:'switch', 'aria-checked':String(on), tabindex:'0',
+        title:'Show only the rows that still have something to plan for this day',
+        onClick: ()=> this.setUnplannedOnly(!on),
+        ref:(el)=> el.addEventListener('keydown',(e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); this.setUnplannedOnly(!on); } }) },
+        h('span',{ class:'tg'+(on?' on':'') }, h('span',{ class:'knob' })),
+        h('span',{ style:{ display:'flex', flexDirection:'column', gap:'1px' } },
+          h('span',{ style:{ fontSize:'11px', fontWeight:'500', lineHeight:'14px', color:'var(--color-text-2)', whiteSpace:'nowrap' } }, 'Unplanned only'),
+          h('span',{ style:{ lineHeight:'20px', whiteSpace:'nowrap' } }, n ? n+' to plan' : 'All planned'))));
     }
     const funnel = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16l-6.2 7.4V19l-3.6-1.8v-4.8L4 5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
     const head = h('div',{ style:{ display:'flex', alignItems:'center', gap:'8px', padding:'0 16px 0 0',
@@ -2254,12 +2450,18 @@ const App = {
   // op hours identical across weekdays (an op-hours input); breaks are read-only;
   // `closed` lists weekdays with no operating hours for that YC.
   SLOT_YC: [
-    {id:'hsr',  name:'HSR Yulu center',        op:[5,21],  breaks:[[12,13]], closed:[]},
-    {id:'bell', name:'Bellandur Yulu center',  op:[9,21],  breaks:[],        closed:[]},
-    {id:'kadu', name:'Kadubesanahalli YC',     op:[6,21],  breaks:[[14,15]], closed:[]},
-    {id:'mara', name:'Marathahalli YC',        op:[8,20],  breaks:[[13,14]], closed:['sat','sun']},
-    {id:'white',name:'Whitefield YC (24×7)',   op:[0,24],  breaks:[],        closed:[]},
-    {id:'sarj', name:'Sarjapur YC',            op:[7,20],  breaks:[[13,14]], closed:['sun']},
+    {id:'hsr',  name:'HSR Yulu center',        op:[5,21],  breaks:[[12,13]], closed:[],              city:'Bangalore', cluster:'Cluster 1'},
+    {id:'bell', name:'Bellandur Yulu center',  op:[9,21],  breaks:[],        closed:[],              city:'Bangalore', cluster:'Cluster 1'},
+    {id:'kadu', name:'Kadubesanahalli YC',     op:[6,21],  breaks:[[14,15]], closed:[],              city:'Bangalore', cluster:'Cluster 1'},
+    {id:'mara', name:'Marathahalli YC',        op:[8,20],  breaks:[[13,14]], closed:['sat','sun'],   city:'Bangalore', cluster:'Cluster 1'},
+    {id:'white',name:'Whitefield YC (24×7)',   op:[0,24],  breaks:[],        closed:[],              city:'Bangalore', cluster:'Cluster 2'},
+    {id:'sarj', name:'Sarjapur YC',            op:[7,20],  breaks:[[13,14]], closed:['sun'],         city:'Bangalore', cluster:'Cluster 3'},
+    {id:'gur',  name:'Sector 29 Gurgaon YC',   op:[6,22],  breaks:[[13,14]], closed:[],              city:'Delhi NCR', cluster:'Cluster 1'},
+    {id:'noi',  name:'Noida Sector 62 YC',     op:[7,21],  breaks:[[13,14]], closed:['sun'],         city:'Delhi NCR', cluster:'Cluster 2'},
+    {id:'andh', name:'Andheri West YC',        op:[6,22],  breaks:[[14,15]], closed:[],              city:'Mumbai',    cluster:'Cluster 1'},
+    {id:'pow',  name:'Powai YC',               op:[8,20],  breaks:[],        closed:['sun'],         city:'Mumbai',    cluster:'Cluster 2'},
+    {id:'kor',  name:'Koregaon Park YC',       op:[7,21],  breaks:[[13,14]], closed:[],              city:'Pune',      cluster:'Cluster 1'},
+    {id:'hin',  name:'Hinjewadi YC',           op:[6,20],  breaks:[[12,13]], closed:['sat','sun'],   city:'Pune',      cluster:'Cluster 2'},
   ],
   // no slot carries a locked/planned state — every defined slot is editable
   SLOT_SEED: {},
@@ -2431,9 +2633,14 @@ const App = {
             style:{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', borderRadius:'6px',
               cursor:'pointer', fontSize:'13px', whiteSpace:'nowrap',
               color: 'var(--color-text)',
-              background: it.active? 'color-mix(in srgb, var(--color-active) 12%, transparent)':'transparent' } },
+              background: (it.active && !cfg.multi)? 'color-mix(in srgb, var(--color-active) 12%, transparent)':'transparent' } },
+            cfg.multi ? h('span',{ style:{ width:'16px', height:'16px', flex:'none', borderRadius:'4px', display:'flex',
+                alignItems:'center', justifyContent:'center', color:'#fff',
+                border:'1px solid '+(it.active?'var(--color-active)':'var(--color-neutral-600)'),
+                background: it.active ? 'var(--color-active)' : 'transparent' },
+              html: it.active ? '<svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 L6 10.5 L11 4"/></svg>' : '' }) : null,
             h('span',{}, it.label),
-            h('span',{ style:{ marginLeft:'auto', paddingLeft:'12px', fontSize:'12px', color:accent, opacity: it.active?'1':'0' } }, '✓')))
+            cfg.multi ? null : h('span',{ style:{ marginLeft:'auto', paddingLeft:'12px', fontSize:'12px', color:accent, opacity: it.active?'1':'0' } }, '✓')))
         ));
     }
     return h('div',{ style:{ position:'relative', display: flat ? 'flex' : 'block' } }, trigger, menu);
